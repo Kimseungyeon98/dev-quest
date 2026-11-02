@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>Git Playbook — 상황별로 배우는 Git</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app" class="app">
+  <!-- 상단 바 -->
+  <header class="topbar">
+    <button id="btnMenu" class="icon-btn only-mobile" aria-label="시나리오 목록">☰</button>
+    <a href="../index.html" class="hub-link" title="Dev Quest 홈" aria-label="Dev Quest 홈으로">⌂</a>
+    <div class="brand"><span class="brand-logo">⎇</span> Git Playbook <small>상황별 실전 Git</small></div>
+    <div class="top-progress" id="topProgress" title="진행도"></div>
+    <button id="btnSos" class="chip chip-sos" title="지금 상황으로 시나리오 찾기">🆘<span> 상황 찾기</span></button>
+    <button id="btnHelp" class="icon-btn" aria-label="도움말">?</button>
+  </header>
+
+  <div class="layout">
+    <!-- 왼쪽: 시나리오 목록 -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-head">
+        <input id="sosInput" class="search" type="search" placeholder="🔎 예) push 거절, 충돌, 되돌리기" autocomplete="off">
+      </div>
+      <div id="sosResults" class="sos-results" hidden></div>
+      <nav id="scenarioList" class="scenario-list"></nav>
+      <div class="sidebar-foot">
+        <button id="btnSandbox" class="btn btn-ghost block">🧪 자유 연습장 (샌드박스)</button>
+        <button id="btnResetAll" class="link-btn">진행 기록 초기화</button>
+      </div>
+    </aside>
+    <div id="scrim" class="scrim" hidden></div>
+
+    <!-- 가운데: 시나리오 + 터미널 -->
+    <main class="center" id="centerCol">
+      <section id="paneStory" class="pane pane-story active">
+        <div id="storyBox"></div>
+      </section>
+      <section id="paneTerm" class="pane pane-term">
+        <div class="term-wrap">
+          <div class="term-bar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="term-title" id="termTitle">terminal</span>
+            <button id="btnClear" class="mini-btn" title="화면 지우기">지우기</button>
+            <button id="btnReset" class="mini-btn" title="이 시나리오를 처음 상태로">↺ 처음부터</button>
+          </div>
+          <div id="termOut" class="term-out" tabindex="-1" aria-live="polite"></div>
+          <div id="chips" class="chips"></div>
+          <form id="termForm" class="term-in" autocomplete="off">
+            <span id="promptLabel" class="prompt"></span>
+            <input id="termInput" type="text" inputmode="text" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="명령어 입력">
+            <button type="submit" class="send" aria-label="실행">⏎</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <!-- 오른쪽: 시각화 -->
+    <aside class="right" id="rightCol">
+      <div class="vis-tabs" id="visTabs" role="tablist">
+        <button data-vis="graph" class="active">🌳 그래프</button>
+        <button data-vis="files">📁 작업공간</button>
+        <button data-vis="remote">🌐 원격</button>
+        <button data-vis="log">🕑 기록</button>
+      </div>
+      <section id="visGraph" class="vis active"></section>
+      <section id="visFiles" class="vis"></section>
+      <section id="visRemote" class="vis"></section>
+      <section id="visLog" class="vis"></section>
+    </aside>
+  </div>
+
+  <!-- 모바일 하단 탭 -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button data-pane="story" class="active"><span>📖</span>상황</button>
+    <button data-pane="term"><span>⌨️</span>터미널</button>
+    <button data-pane="graph"><span>🌳</span>그래프</button>
+    <button data-pane="files"><span>📁</span>파일</button>
+    <button data-pane="remote"><span>🌐</span>원격</button>
+  </nav>
+</div>
+
+<!-- 모달 -->
+<div id="modal" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <div class="modal-head"><strong id="modalTitle"></strong><button id="modalX" class="icon-btn" aria-label="닫기">✕</button></div>
+    <div id="modalBody" class="modal-body"></div>
+    <div id="modalFoot" class="modal-foot"></div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/engine/sha1.js"></script>
+<script src="js/engine/diff.js"></script>
+<script src="js/engine/repo.js"></script>
+<script src="js/engine/git-util.js"></script>
+<script src="js/engine/git-core.js"></script>
+<script src="js/engine/git-graph.js"></script>
+<script src="js/engine/git-log.js"></script>
+<script src="js/engine/git-refs.js"></script>
+<script src="js/engine/git-merge.js"></script>
+<script src="js/engine/git-bisect.js"></script>
+<script src="js/engine/git-remote.js"></script>
+<script src="js/engine/shell.js"></script>
+<script src="js/engine/git-main.js"></script>
+<script src="js/lab.js"></script>
+<script src="js/scenarios-common.js"></script>
+<script src="js/scenarios-1-basic.js"></script>
+<script src="js/scenarios-2-merge-undo.js"></script>
+<script src="js/scenarios-3-history-remote.js"></script>
+<script src="js/scenarios-4-inspect-advanced.js"></script>
+<script src="js/ui-render.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0d1117" />
+<title>Dev Quest — 게임으로 배우는 개발 명령어</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #151b23; --panel-border: #2a313c; --track: #1f2630;
+    --text: #c9d1d9; --muted: #8b949e; --strong: #f0f6fc;
+    --sans: -apple-system, BlinkMacSystemFont, "Pretendard", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.55; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 48px 16px 64px; }
+  header h1 { margin: 0; font-size: 28px; color: var(--strong); }
+  header p { margin: 6px 0 0; color: var(--muted); }
+  .summary { margin-top: 18px; font-size: 14px; color: var(--muted); }
+  .summary b { color: var(--strong); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 28px; }
+  .card {
+    display: flex; flex-direction: column; gap: 10px; padding: 20px;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
+    color: inherit; text-decoration: none; transition: border-color .15s, transform .15s;
+  }
+  .card:hover, .card:focus-visible { border-color: var(--accent); transform: translateY(-2px); outline: none; }
+  .card-head { display: flex; align-items: center; gap: 12px; }
+  .icon {
+    display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; font-size: 22px;
+    background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); flex: none;
+  }
+  .name { font-size: 18px; font-weight: 700; color: var(--strong); }
+  .tagline { font-size: 13px; color: var(--muted); }
+  .desc { margin: 0; font-size: 14px; flex: 1; }
+  .bar { height: 8px; background: var(--track); border-radius: 99px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+  .cta { color: var(--accent); font-weight: 600; }
+  footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎮 Dev Quest</h1>
+    <p>터미널과 에디터에 직접 입력하면서 배우는 개발 명령어 연습장</p>
+    <div class="summary" id="summary"></div>
+  </header>
+
+  <main class="grid" id="courseGrid"></main>
+
+  <footer>진행 기록은 이 브라우저에만 저장돼요. 과목별 진행은 각 과목 안에서 초기화할 수 있어요.</footer>
+</div>
+
+<script src="courses.js"></script>
+<script>
+(function () {
+  'use strict';
+  const courses = window.DEV_QUEST_COURSES;
+
+  function readDone(course) {
+    try {
+      const raw = localStorage.getItem(course.storageKey);
+      return raw ? Math.min(course.countDone(JSON.parse(raw)), course.total) : 0;
+    } catch (e) { return 0; }
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  let doneAll = 0, totalAll = 0;
+  document.getElementById('courseGrid').innerHTML = courses.map((c) => {
+    const done = readDone(c);
+    const pct = Math.round((done / c.total) * 100);
+    doneAll += done; totalAll += c.total;
+    const cta = done === 0 ? '시작하기 →' : done === c.total ? '복습하기 →' : '이어하기 →';
+    return `
+      <a class="card" href="${esc(c.path)}index.html" style="--accent:${esc(c.accent)}">
+        <div class="card-head">
+          <span class="icon">${esc(c.icon)}</span>
+          <div><div class="name">${esc(c.name)}</div><div class="tagline">${esc(c.tagline)}</div></div>
+        </div>
+        <p class="desc">${esc(c.desc)}</p>
+        <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
+        <div class="meta"><span>${done} / ${c.total} ${esc(c.unit)} · ${pct}%</span><span class="cta">${cta}</span></div>
+      </a>`;
+  }).join('');
+
+  document.getElementById('summary').innerHTML =
+    `과목 <b>${courses.length}</b>개 · 전체 진행 <b>${doneAll} / ${totalAll}</b>`;
+})();
+</script>
+</body>
+</html>

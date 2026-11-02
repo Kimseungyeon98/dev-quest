@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Query Lab — 실무 SQL 연습실</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="topbar-left">
+      <a href="../index.html" class="hub-link" title="Dev Quest 홈" aria-label="Dev Quest 홈으로">⌂</a>
+      <span class="logo">🗄️ Query Lab</span>
+      <span class="subtitle">실무 SQL 연습실</span>
+    </div>
+    <div class="topbar-right">
+      <span id="solvedCount">0 / 0 해결</span>
+    </div>
+  </header>
+
+  <div id="main">
+    <aside id="sidebar">
+      <details id="categoryListDetails" open>
+        <summary>문제 목록 <span id="currentProblemLabel" class="current-label"></span></summary>
+        <div id="categoryList"></div>
+      </details>
+      <div class="sidebar-section">
+        <button id="cheatSheetBtn">📖 지금까지 배운 패턴</button>
+      </div>
+    </aside>
+
+    <section id="workPane">
+      <div id="loadingBanner">⏳ SQL 엔진(SQLite WASM) 로딩 중...</div>
+
+      <div id="problemBrief" class="hidden">
+        <h3 id="problemTitle">-</h3>
+        <p id="problemScenario">-</p>
+        <div id="expectedColumns" class="expected-columns hidden"></div>
+        <div id="hintArea">
+          <button id="hintBtn">💡 힌트</button>
+          <button id="conceptBtn" class="hidden">📚 왜 배우나요?</button>
+          <button id="schemaToggleBtn">🗂️ 스키마 보기</button>
+          <div id="hintText" class="hidden"></div>
+          <div id="conceptText" class="hidden"></div>
+        </div>
+        <div id="schemaPanel" class="hidden"></div>
+      </div>
+
+      <div id="queryWorkArea" class="hidden">
+        <div id="targetQueryBox" class="hidden">
+          <div class="box-label">🎯 최적화 대상 쿼리 (읽기 전용)</div>
+          <pre id="targetQueryText"></pre>
+        </div>
+        <textarea id="sqlEditor" spellcheck="false" autocomplete="off"></textarea>
+        <div class="editor-actions">
+          <button id="runBtn">▶ 실행</button>
+          <span id="runStatus"></span>
+        </div>
+        <div id="resultArea"></div>
+        <div id="planArea" class="hidden"></div>
+      </div>
+
+      <div id="shortAnswerArea" class="hidden">
+        <div id="shortAnswerPlanBox" class="hidden">
+          <div class="box-label">📋 실행계획</div>
+          <pre id="shortAnswerPlanText"></pre>
+        </div>
+        <p id="shortAnswerQuestion"></p>
+        <div class="short-answer-row">
+          <input id="shortAnswerInput" type="text" autocomplete="off" placeholder="답을 입력하세요" />
+          <button id="shortAnswerSubmit">제출</button>
+        </div>
+        <div id="shortAnswerFeedback"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="cheatSheetModal" class="modal hidden">
+  <div class="modal-content">
+    <button id="closeCheatSheet" class="modal-close">✕</button>
+    <h2>📖 지금까지 배운 패턴</h2>
+    <div id="cheatSheetList"></div>
+  </div>
+</div>
+
+<script src="js/sql-wasm-data.js"></script>
+<script src="js/sql-wasm.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js" defer></script>
+</body>
+</html>
