@@ -13,12 +13,36 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.55; }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 48px 16px 64px; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 16px 64px; }
   header h1 { margin: 0; font-size: 28px; color: var(--strong); }
   header p { margin: 6px 0 0; color: var(--muted); }
-  .summary { margin-top: 18px; font-size: 14px; color: var(--muted); }
-  .summary b { color: var(--strong); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 28px; }
+
+  /* 전체 티어 */
+  .rank {
+    --tier: #8b949e; margin-top: 24px; padding: 22px; border-radius: 16px; border: 1px solid var(--panel-border);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--tier) 14%, var(--panel)), var(--panel) 60%);
+    display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: center;
+  }
+  .rank-badge { display: grid; place-items: center; text-align: center; min-width: 120px; }
+  .rank-icon { font-size: 54px; line-height: 1; filter: drop-shadow(0 4px 14px color-mix(in srgb, var(--tier) 60%, transparent)); }
+  .rank-name { margin-top: 6px; font-size: 20px; font-weight: 800; color: var(--tier); }
+  .rank-sub { font-size: 12px; color: var(--muted); }
+  .rank-main h2 { margin: 0 0 4px; font-size: 15px; color: var(--muted); font-weight: 600; }
+  .rank-xp { font-size: 26px; font-weight: 800; color: var(--strong); font-variant-numeric: tabular-nums; }
+  .rank-xp small { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .tierbar { position: relative; height: 12px; margin: 14px 0 22px; background: var(--track); border-radius: 99px; }
+  .tierbar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--tier); border-radius: 99px; transition: width .6s; }
+  .tick { position: absolute; top: -3px; width: 2px; height: 18px; background: #0d1117; }
+  .tick span { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .tick.reached span { color: var(--strong); }
+  .next { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  .next b { color: var(--strong); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--track); border: 1px solid var(--panel-border); white-space: nowrap; }
+  .chip b { color: var(--strong); }
+  .d-easy { color: #56d364; } .d-medium { color: #e3b341; } .d-hard { color: #ff7b72; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; margin-top: 26px; }
   .card {
     display: flex; flex-direction: column; gap: 10px; padding: 20px;
     background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
@@ -32,12 +56,28 @@
   }
   .name { font-size: 18px; font-weight: 700; color: var(--strong); }
   .tagline { font-size: 13px; color: var(--muted); }
+  .card-tier { margin-left: auto; text-align: right; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .card-tier small { display: block; color: var(--muted); font-weight: 500; }
   .desc { margin: 0; font-size: 14px; flex: 1; }
   .bar { height: 8px; background: var(--track); border-radius: 99px; overflow: hidden; }
-  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .5s; }
   .meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
   .cta { color: var(--accent); font-weight: 600; }
-  footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
+  .diffs { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
+  .diffs b { font-variant-numeric: tabular-nums; }
+
+  .rules { margin-top: 36px; padding: 18px 20px; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; font-size: 13px; }
+  .rules h3 { margin: 0 0 8px; font-size: 14px; color: var(--strong); }
+  .rules p { margin: 4px 0; }
+  .tiers { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
+  .tiers span { white-space: nowrap; }
+  footer { margin-top: 28px; font-size: 13px; color: var(--muted); }
+  @media (max-width: 640px) {
+    .rank { grid-template-columns: 1fr; padding: 18px; gap: 14px; }
+    .rank-badge { grid-auto-flow: column; justify-content: start; gap: 14px; text-align: left; }
+    .rank-icon { font-size: 42px; }
+    .tick span { font-size: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -45,51 +85,129 @@
   <header>
     <h1>🎮 Dev Quest</h1>
     <p>터미널과 에디터에 직접 입력하면서 배우는 개발 명령어 연습장</p>
-    <div class="summary" id="summary"></div>
   </header>
 
+  <section class="rank" id="rank" aria-label="전체 티어"></section>
+
   <main class="grid" id="courseGrid"></main>
+
+  <section class="rules" id="rules"></section>
 
   <footer>진행 기록은 이 브라우저에만 저장돼요. 과목별 진행은 각 과목 안에서 초기화할 수 있어요.</footer>
 </div>
 
 <script src="courses.js"></script>
+<script src="shared/dq.js"></script>
 <script>
 (function () {
   'use strict';
+  const DQ = window.DevQuest;
   const courses = window.DEV_QUEST_COURSES;
+  const ITEMS_KEY = 'devQuest:items';   // 마지막으로 읽은 퀘스트 목록 (다음 방문 때 먼저 보여 주기 위한 캐시)
+  const esc = DQ.esc;
 
-  function readDone(course) {
+  function readJson(key, fallback) {
+    try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (e) { return fallback; }
+  }
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src; el.onload = resolve; el.onerror = () => reject(new Error(src));
+      document.head.appendChild(el);
+    });
+  }
+  // 과목의 데이터 파일을 불러와 퀘스트 목록을 직접 만든다 (실패하면 null)
+  async function loadItems(course) {
     try {
-      const raw = localStorage.getItem(course.storageKey);
-      return raw ? Math.min(course.countDone(JSON.parse(raw)), course.total) : 0;
-    } catch (e) { return 0; }
+      for (const src of course.scripts()) await loadScript(src);
+      if (course.scriptsAfter) for (const src of course.scriptsAfter()) await loadScript(src);
+      return course.items();
+    } catch (e) { return null; }
+  }
+  function doneIdsOf(course) {
+    const saved = readJson(course.storageKey, null);
+    try { return saved ? course.doneIds(saved) : []; } catch (e) { return []; }
   }
 
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const items = readJson(ITEMS_KEY, {});
+  const grid = document.getElementById('courseGrid');
+
+  function diffLine(by) {
+    return DQ.DIFF_KEYS.map((k) => `<span class="d-${k}">${DQ.DIFFICULTY[k].label} <b>${by[k].done}/${by[k].total}</b></span>`).join('');
   }
 
-  let doneAll = 0, totalAll = 0;
-  document.getElementById('courseGrid').innerHTML = courses.map((c) => {
-    const done = readDone(c);
-    const pct = Math.round((done / c.total) * 100);
-    doneAll += done; totalAll += c.total;
-    const cta = done === 0 ? '시작하기 →' : done === c.total ? '복습하기 →' : '이어하기 →';
+  function renderRank(all, known) {
+    const el = document.getElementById('rank');
+    el.style.setProperty('--tier', all.tier.color);
+    const ticks = DQ.TIERS.slice(1).map((t) =>
+      `<div class="tick${all.ratio >= t.min ? ' reached' : ''}" style="left:${t.min * 100}%"><span>${t.icon}</span></div>`).join('');
+    const next = all.nextTier
+      ? `다음 티어 <b>${all.nextTier.icon} ${all.nextTier.name}</b> 까지 <b>${all.toNext} XP</b> (${Math.round(all.nextTier.min * 100)}% 달성 시)`
+      : '최고 티어에 도달했어요! 🎉';
+    el.innerHTML = `
+      <div class="rank-badge"><div class="rank-icon">${all.tier.icon}</div><div><div class="rank-name">${esc(all.tier.name)}</div><div class="rank-sub">종합 티어</div></div></div>
+      <div class="rank-main">
+        <h2>전체 학습 점수 (난이도 가중치 반영)</h2>
+        <div class="rank-xp">${all.xp.toLocaleString()} <small>/ ${all.maxXp.toLocaleString()} XP · ${(all.ratio * 100).toFixed(1)}%</small></div>
+        <div class="tierbar" role="progressbar" aria-valuenow="${Math.round(all.ratio * 100)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${all.ratio * 100}%"></i>${ticks}</div>
+        <div class="next">${known ? next : '퀘스트 목록을 불러오는 중…'}</div>
+        <div class="chips">
+          <span class="chip">완료 <b>${all.done} / ${all.total}</b> 퀘스트</span>
+          ${DQ.DIFF_KEYS.map((k) => `<span class="chip d-${k}">${DQ.DIFFICULTY[k].label} <b>${all.by[k].done} / ${all.by[k].total}</b> · ${DQ.DIFFICULTY[k].xp}XP</span>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  function cardHtml(c, s) {
+    if (!s) {
+      return `<a class="card" href="${esc(c.path)}index.html" style="--accent:${esc(c.accent)}"><div class="card-head"><span class="icon">${esc(c.icon)}</span><div><div class="name">${esc(c.name)}</div><div class="tagline">${esc(c.tagline)}</div></div></div><p class="desc">${esc(c.desc)}</p><div class="meta"><span>불러오는 중…</span><span class="cta">시작하기 →</span></div></a>`;
+    }
+    const cta = s.done === 0 ? '시작하기 →' : s.done === s.total ? '복습하기 →' : '이어하기 →';
+    const pct = Math.round(s.ratio * 100);
     return `
       <a class="card" href="${esc(c.path)}index.html" style="--accent:${esc(c.accent)}">
         <div class="card-head">
           <span class="icon">${esc(c.icon)}</span>
           <div><div class="name">${esc(c.name)}</div><div class="tagline">${esc(c.tagline)}</div></div>
+          <div class="card-tier" style="color:${s.tier.color}">${s.tier.icon} ${esc(s.tier.name)}<small>Lv.${s.level.level}</small></div>
         </div>
         <p class="desc">${esc(c.desc)}</p>
         <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
-        <div class="meta"><span>${done} / ${c.total} ${esc(c.unit)} · ${pct}%</span><span class="cta">${cta}</span></div>
+        <div class="diffs">${diffLine(s.by)}</div>
+        <div class="meta"><span>${s.done} / ${s.total} 퀘스트 · ${s.xp} XP</span><span class="cta">${cta}</span></div>
       </a>`;
-  }).join('');
+  }
 
-  document.getElementById('summary').innerHTML =
-    `과목 <b>${courses.length}</b>개 · 전체 진행 <b>${doneAll} / ${totalAll}</b>`;
+  function renderRules() {
+    document.getElementById('rules').innerHTML = `
+      <h3>점수와 티어는 이렇게 계산해요</h3>
+      <p>퀘스트마다 난이도에 따라 XP 가 달라요: ${DQ.DIFF_KEYS.map((k) => `<span class="d-${k}">${DQ.DIFFICULTY[k].stars} ${DQ.DIFFICULTY[k].label} ${DQ.DIFFICULTY[k].xp}XP</span>`).join(' · ')}</p>
+      <p>티어는 <b>전체 XP 중 내가 얻은 비율</b>로 정해져요. 어려운 퀘스트를 풀수록 티어가 빨리 올라요.</p>
+      <div class="tiers">${DQ.TIERS.map((t) => `<span style="color:${t.color}">${t.icon} ${t.name} <small>${Math.round(t.min * 100)}%~</small></span>`).join('')}</div>`;
+  }
+
+  function render() {
+    const known = courses.every((c) => items[c.id]);
+    const perCourse = courses.map((c) => (items[c.id] ? DQ.stats(items[c.id].map((x) => ({ id: x[0], difficulty: x[1] })), doneIdsOf(c)) : null));
+    grid.innerHTML = courses.map((c, i) => cardHtml(c, perCourse[i])).join('');
+    // 종합: 모든 과목의 퀘스트를 합쳐서 계산 (id 충돌 방지를 위해 과목 id 접두사)
+    const allItems = [], allDone = [];
+    courses.forEach((c) => {
+      (items[c.id] || []).forEach((x) => allItems.push({ id: c.id + ':' + x[0], difficulty: x[1] }));
+      if (items[c.id]) doneIdsOf(c).forEach((id) => allDone.push(c.id + ':' + id));
+    });
+    renderRank(DQ.stats(allItems, allDone), known);
+  }
+
+  renderRules();
+  render();
+  Promise.all(courses.map(async (c) => {
+    const list = await loadItems(c);
+    if (list) items[c.id] = list.map((x) => [x.id, DQ.diffKey(x.difficulty)]);
+  })).then(() => {
+    try { localStorage.setItem(ITEMS_KEY, JSON.stringify(items)); } catch (e) { /* 무시 */ }
+    render();
+  });
 })();
 </script>
 </body>

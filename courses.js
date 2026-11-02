@@ -1,31 +1,45 @@
-/* 허브에 표시할 과목 목록. 새 과목을 추가하려면 폴더를 만들고 여기에 항목 하나를 추가하세요.
- * - storageKey: 그 과목 앱이 진행 기록을 저장하는 localStorage 키
- * - total: 전체 문제 수 (문제를 추가하면 같이 올려 주세요)
- * - countDone(saved): 저장된 JSON 에서 완료한 문제 수를 센다 */
+/* 과목 목록 — 허브와 각 과목 화면이 함께 읽는 단일 원본이에요.
+ * 이름·아이콘·한 줄 소개를 여기서만 정하므로 모든 화면의 제목이 항상 같아요.
+ * - storageKey / doneIds(saved): 그 과목 앱이 저장한 진행 기록에서 "완료한 퀘스트 id 목록"을 꺼낸다
+ * - scripts / items(): 허브가 과목의 데이터 파일만 불러와 퀘스트 목록({id, difficulty})을 직접 만든다.
+ *   (퀘스트를 추가해도 이 파일의 숫자를 고칠 필요가 없어요) */
 (function () {
   'use strict';
 
   window.DEV_QUEST_COURSES = [
     {
-      id: 'linux', path: 'linux/', icon: '🐧', name: 'Linux Quest', tagline: '신입 서버 운영 담당자 생존기',
-      desc: '가상 터미널에서 파일 다루기부터 파이프, 프로세스, Docker, vi 까지.',
-      unit: '미션', total: 67, accent: '#3fb950',
+      id: 'linux', path: 'linux/', icon: '🐧', name: 'Linux Quest', tagline: '가상 터미널로 배우는 서버 명령어',
+      desc: '파일 다루기부터 파이프, 프로세스, Docker, vi 까지 서버 운영 생존기.',
+      accent: '#3fb950',
       storageKey: 'linuxQuestProgress_v1',
-      countDone: (saved) => (saved.completed || []).length,
+      doneIds: (saved) => saved.completed || [],
+      scripts: () => ['linux/js/missions.js'],
+      // 미션 정의는 가상 파일시스템 헬퍼가 필요하지만, 목록만 만들 땐 빈 헬퍼로 충분해요.
+      items: () => {
+        const noop = () => ({});
+        return window.LINUX_MISSIONS_FACTORY({ D: noop, F: noop, HOME_PATH: [], getNodeFromHome: noop, arraysEqual: noop })
+          .map((m) => ({ id: m.id, difficulty: m.difficulty }));
+      },
     },
     {
-      id: 'sql', path: 'sql/', icon: '🗄️', name: 'Query Lab', tagline: '실무 SQL 연습실',
+      id: 'sql', path: 'sql/', icon: '🗄️', name: 'SQL Quest', tagline: '실무 쿼리로 배우는 SQL',
       desc: '진짜 SQLite 엔진으로 JOIN, 집계, 윈도우 함수, 인덱스 튜닝까지.',
-      unit: '문제', total: 36, accent: '#58a6ff',
+      accent: '#58a6ff',
       storageKey: 'sqlQueryLabProgress_v1',
-      countDone: (saved) => (saved.solved || []).length,
+      doneIds: (saved) => saved.solved || [],
+      scripts: () => ['sql/js/data.js'],
+      items: () => window.SQL_LAB_DATA.PROBLEMS.map((p) => ({ id: p.id, difficulty: p.difficulty })),
     },
     {
-      id: 'git', path: 'git/', icon: '⎇', name: 'Git Playbook', tagline: '상황별로 배우는 실전 Git',
-      desc: '커밋, 브랜치, 충돌 해결, 되돌리기, rebase, 원격 협업을 시나리오로.',
-      unit: '시나리오', total: 73, accent: '#f05033',
+      id: 'git', path: 'git/', icon: '⎇', name: 'Git Quest', tagline: '실전 시나리오로 배우는 Git',
+      desc: '커밋, 브랜치, 충돌 해결, 되돌리기, rebase, 원격 협업을 상황별로.',
+      accent: '#f05033',
       storageKey: 'gitplaybook:v1',
-      countDone: (saved) => Object.keys(saved.done || {}).filter((k) => saved.done[k]).length,
+      doneIds: (saved) => Object.keys(saved.done || {}).filter((k) => saved.done[k]),
+      // 시나리오 파일 목록은 git/js/scenario-files.js 하나만 관리해요.
+      scripts: () => ['git/js/scenario-files.js'],
+      scriptsAfter: () => window.GIT_PLAYBOOK_SCENARIO_FILES.map((f) => 'git/js/' + f),
+      items: () => window.GP.scenarios.map((s) => ({ id: s.id, difficulty: s.level })),
     },
   ];
 })();

@@ -3,26 +3,18 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Query Lab — 실무 SQL 연습실</title>
+<title>SQL Quest · Dev Quest</title>
 <link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="../shared/dq.css" />
 </head>
 <body>
 <div id="app">
-  <header id="topbar">
-    <div class="topbar-left">
-      <a href="../index.html" class="hub-link" title="Dev Quest 홈" aria-label="Dev Quest 홈으로">⌂</a>
-      <span class="logo">🗄️ Query Lab</span>
-      <span class="subtitle">실무 SQL 연습실</span>
-    </div>
-    <div class="topbar-right">
-      <span id="solvedCount">0 / 0 해결</span>
-    </div>
-  </header>
+  <header id="dqbar"></header>
 
   <div id="main">
     <aside id="sidebar">
       <details id="categoryListDetails" open>
-        <summary>문제 목록 <span id="currentProblemLabel" class="current-label"></span></summary>
+        <summary>퀘스트 목록 <span id="currentProblemLabel" class="current-label"></span></summary>
         <div id="categoryList"></div>
       </details>
       <div class="sidebar-section">
@@ -85,6 +77,8 @@
   </div>
 </div>
 
+<script src="../courses.js"></script>
+<script src="../shared/dq.js"></script>
 <script src="js/sql-wasm-data.js"></script>
 <script src="js/sql-wasm.js"></script>
 <script src="js/data.js"></script>

@@ -1,4 +1,4 @@
-/* Git Playbook 앱: 시나리오 선택, 터미널, 시각화, 진행도 */
+/* Git Quest 앱: 시나리오 선택, 터미널, 시각화, 진행도 */
 (function () {
   'use strict';
   const GP = globalThis.GP, UI = globalThis.GPUI, G = globalThis.GitEngine, U = G.util;
@@ -31,7 +31,9 @@
   };
 
   /* ---------- 유틸 ---------- */
-  const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+  const DQ = window.DevQuest;
+  const dqBar = DQ.mountBar('git');
+  const SCENARIO_ITEMS = () => GP.scenarios.map((s) => ({ id: s.id, difficulty: s.level }));
   function toast(msg, ms) {
     const t = $('#toast'); t.textContent = msg; t.hidden = false;
     clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, ms || 2200);
@@ -100,16 +102,13 @@
   }
 
   /* ---------- 진행도 ---------- */
-  function doneCount() { return GP.scenarios.filter((s) => store.done[s.id]).length; }
   function renderTop() {
-    const n = doneCount(), total = GP.scenarios.length;
-    $('#topProgress').innerHTML = `<span>${n}/${total}<span class="hide-s"> 완료</span></span><div class="pbar"><i style="width:${Math.round((n / total) * 100)}%"></i></div>`;
+    dqBar.update(DQ.stats(SCENARIO_ITEMS(), GP.scenarios.filter((s) => store.done[s.id]).map((s) => s.id)));
   }
 
   /* ---------- 사이드바 ---------- */
   function scItemHtml(s) {
-    const done = !!store.done[s.id];
-    return `<button class="sc-item${done ? ' done' : ''}${sc && sc.id === s.id ? ' active' : ''}" data-id="${s.id}"><span class="ico">${s.icon}</span><span class="ti">${UI.esc(s.title)}</span><span class="lv" title="난이도">${'★'.repeat(s.level)}</span><span class="ck">${done ? '✓' : ''}</span></button>`;
+    return DQ.itemHtml({ id: s.id, title: s.title, icon: s.icon, difficulty: s.level, done: !!store.done[s.id], active: !!(sc && sc.id === s.id) });
   }
   function renderSidebar() {
     const open = JSON.parse(sessionStorage.getItem('gp:open') || 'null');
@@ -117,14 +116,14 @@
       const list = GP.scenarios.filter((s) => s.cat === c.id);
       const done = list.filter((s) => store.done[s.id]).length;
       const isOpen = open ? open.includes(c.id) : (i < 2 || (sc && sc.cat === c.id));
-      return `<details class="cat" data-cat="${c.id}" ${isOpen ? 'open' : ''}><summary><span>${c.icon}</span><span>${c.name}</span><span class="cat-count">${done}/${list.length}</span></summary><div class="cat-desc">${UI.esc(c.desc)}</div>${list.map(scItemHtml).join('')}</details>`;
+      return DQ.catHtml({ id: c.id, icon: c.icon, label: c.name, desc: c.desc, done, total: list.length }, list.map(scItemHtml).join(''), isOpen);
     }).join('');
   }
   $('#scenarioList').addEventListener('toggle', () => {
     sessionStorage.setItem('gp:open', JSON.stringify($$('#scenarioList details[open]').map((d) => d.dataset.cat)));
   }, true);
   document.addEventListener('click', (e) => {
-    const it = e.target.closest('.sc-item');
+    const it = e.target.closest('.dq-item');
     if (it && it.dataset.id) { loadScenario(it.dataset.id); closeSidebar(); $('#sosResults').hidden = true; }
   });
 
@@ -162,7 +161,9 @@
     box.hidden = false;
     box.innerHTML = res.length ? res.map(scItemHtml).join('') : '<div class="sos-empty">일치하는 상황이 없어요. 다른 단어로 검색해 보세요 (예: push, 충돌, 되돌리기)</div>';
   });
-  $('#btnSos').addEventListener('click', () => { openSidebar(); setTimeout(() => $('#sosInput').focus(), 250); });
+  $('#btnSos').addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 960px)').matches) { openSidebar(); setTimeout(() => $('#sosInput').focus(), 250); } else { $('#sosInput').focus(); $('#sosInput').select(); }
+  });
 
   /* ---------- 시나리오 화면 ---------- */
   function storyHtml() {
@@ -172,7 +173,7 @@
     const hintHtml = sc.hints.slice(0, hintShown).map((h) => `<li>${UI.md(h).replace(/<\/?p>/g, '')}</li>`).join('');
     return `
       <div class="sc-head"><div class="big">${sc.icon}</div><div><h2 class="sc-title">${UI.esc(sc.title)}</h2>
-        <div class="sc-meta">${cat ? cat.icon + ' ' + cat.name + ' · ' : sc.id === 'sandbox' ? '' : ''}${sc.level ? `난이도 <span class="stars">${stars(sc.level)}</span>` : '자유 모드'}${done ? ' · <span style="color:var(--green)">✓ 완료</span>' : ''}</div></div></div>
+        <div class="sc-meta">${cat ? cat.icon + ' ' + cat.name + ' · ' : sc.id === 'sandbox' ? '' : ''}${sc.level ? `난이도 <span class="${DQ.diffMeta(sc.level).cls}">${DQ.diffMeta(sc.level).stars} ${DQ.diffMeta(sc.level).label}</span>` : '자유 모드'}${done ? ' · <span style="color:var(--green)">✓ 완료</span>' : ''}</div></div></div>
       <div class="story">${UI.md(sc.story)}</div>
       ${sc.goals.length ? `<ul class="goals" id="goalList">${goals}</ul>` : ''}
       <div id="successBox">${solved ? successHtml() : ''}</div>
@@ -472,7 +473,7 @@
 
   /* ---------- 도움말 ---------- */
   function showHelp() {
-    openModal('Git Playbook 사용법', `
+    openModal('Git Quest 사용법', `
       <ol class="help-list">
         <li><b>상황 읽기</b> — 왼쪽 목록에서 시나리오를 고르면 "오늘 이런 일이 생겼어요" 형식으로 문제가 나와요.</li>
         <li><b>터미널에 명령 입력</b> — 실제 git 과 같은 출력이 나와요. 편집기(vim 등)가 필요한 순간엔 간단한 입력창이 열려요.</li>

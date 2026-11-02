@@ -522,13 +522,13 @@
   };
 
   const CATEGORIES = [
-    { id: 'basics', label: '기본 조회', icon: '🔍' },
-    { id: 'join', label: 'JOIN', icon: '🔗' },
-    { id: 'aggregate', label: 'GROUP BY / 집계', icon: '📊' },
-    { id: 'subquery', label: '서브쿼리', icon: '🧩' },
-    { id: 'window', label: '윈도우 함수', icon: '🪟' },
-    { id: 'transform', label: '실무형 가공 (CASE/날짜/문자열)', icon: '🛠️' },
-    { id: 'perf', label: '인덱스 & 성능 튜닝', icon: '⚡' },
+    { id: 'basics', desc: 'WHERE, ORDER BY, LIMIT 로 원하는 행 뽑기', label: '기본 조회', icon: '🔍' },
+    { id: 'join', desc: '여러 테이블을 연결해서 조회하기', label: 'JOIN', icon: '🔗' },
+    { id: 'aggregate', desc: '그룹별 합계·평균·개수 구하기', label: 'GROUP BY / 집계', icon: '📊' },
+    { id: 'subquery', desc: '쿼리 안의 쿼리로 조건 풀기', label: '서브쿼리', icon: '🧩' },
+    { id: 'window', desc: '순위·누적·이전 행 비교', label: '윈도우 함수', icon: '🪟' },
+    { id: 'transform', desc: 'CASE, 날짜, 문자열로 데이터 다듬기', label: '실무형 가공 (CASE/날짜/문자열)', icon: '🛠️' },
+    { id: 'perf', desc: '실행 계획 읽기와 인덱스 튜닝', label: '인덱스 & 성능 튜닝', icon: '⚡' },
   ];
 
   const DIFFICULTY_META = {

@@ -4,19 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d1117">
-<title>Git Playbook — 상황별로 배우는 Git</title>
+<title>Git Quest · Dev Quest</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="../shared/dq.css">
 </head>
 <body>
 <div id="app" class="app">
   <!-- 상단 바 -->
-  <header class="topbar">
-    <button id="btnMenu" class="icon-btn only-mobile" aria-label="시나리오 목록">☰</button>
-    <a href="../index.html" class="hub-link" title="Dev Quest 홈" aria-label="Dev Quest 홈으로">⌂</a>
-    <div class="brand"><span class="brand-logo">⎇</span> Git Playbook <small>상황별 실전 Git</small></div>
-    <div class="top-progress" id="topProgress" title="진행도"></div>
-    <button id="btnSos" class="chip chip-sos" title="지금 상황으로 시나리오 찾기">🆘<span> 상황 찾기</span></button>
-    <button id="btnHelp" class="icon-btn" aria-label="도움말">?</button>
+  <header id="dqbar">
+    <button id="btnMenu" data-dq-slot="lead" class="icon-btn only-mobile" aria-label="퀘스트 목록">☰</button>
+    <button id="btnSos" data-dq-slot="actions" class="chip chip-sos" title="지금 상황으로 퀘스트 찾기">🆘<span> 상황 찾기</span></button>
+    <button id="btnHelp" data-dq-slot="actions" class="icon-btn" aria-label="도움말">?</button>
   </header>
 
   <div class="layout">
@@ -93,6 +91,8 @@
 </div>
 <div id="toast" class="toast" hidden></div>
 
+<script src="../courses.js"></script>
+<script src="../shared/dq.js"></script>
 <script src="js/engine/sha1.js"></script>
 <script src="js/engine/diff.js"></script>
 <script src="js/engine/repo.js"></script>
@@ -107,11 +107,8 @@
 <script src="js/engine/shell.js"></script>
 <script src="js/engine/git-main.js"></script>
 <script src="js/lab.js"></script>
-<script src="js/scenarios-common.js"></script>
-<script src="js/scenarios-1-basic.js"></script>
-<script src="js/scenarios-2-merge-undo.js"></script>
-<script src="js/scenarios-3-history-remote.js"></script>
-<script src="js/scenarios-4-inspect-advanced.js"></script>
+<script src="js/scenario-files.js"></script>
+<script>window.GIT_PLAYBOOK_SCENARIO_FILES.forEach(function (f) { document.write('<script src="js/' + f + '"><' + '/script>'); });</script>
 <script src="js/ui-render.js"></script>
 <script src="js/app.js"></script>
 </body>

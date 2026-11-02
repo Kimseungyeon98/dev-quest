@@ -4,21 +4,35 @@
 
 | 과목 | 폴더 | 내용 |
 |---|---|---|
-| 🐧 Linux Quest | [`linux/`](linux/) | 가상 터미널로 배우는 리눅스 명령어 (미션 67개) |
-| 🗄️ Query Lab | [`sql/`](sql/) | SQLite WASM 으로 배우는 실무 SQL (문제 36개) |
-| ⎇ Git Playbook | [`git/`](git/) | 상황별 시나리오로 배우는 Git (시나리오 73개) |
+| 🐧 Linux Quest | [`linux/`](linux/) | 가상 터미널로 배우는 서버 명령어 |
+| 🗄️ SQL Quest | [`sql/`](sql/) | SQLite WASM 으로 배우는 실무 SQL |
+| ⎇ Git Quest | [`git/`](git/) | 상황별 시나리오로 배우는 Git |
 
-루트의 `index.html` 은 과목 목록과 진행도를 보여 주는 허브예요.
+과목은 서로 섞이지 않고 각자의 영역에서 공부해요. 루트의 `index.html` 은 과목 목록과 **종합 티어**를 보여 주는 허브예요.
+
+## 점수와 티어
+
+세 과목이 같은 규칙을 써요 (규칙은 [`shared/dq.js`](shared/dq.js) 한 곳에 있어요).
+
+- 퀘스트마다 난이도에 따라 XP 가 달라요: 초급 100 · 중급 150 · 고급 250
+- 레벨은 XP 가 쌓일수록 오르고, 레벨이 높을수록 다음 레벨까지 필요한 XP 가 늘어요.
+- **티어**는 "전체 XP 중 내가 얻은 비율"로 정해요: 🌱 새싹 → 🥉 브론즈(5%) → 🥈 실버(20%) → 🥇 골드(40%) → 💠 플래티넘(60%) → 💎 다이아(80%) → 👑 마스터(97%)
+- 허브는 모든 과목을 합친 종합 티어와 과목별 티어/난이도별 진행을 보여 줘요.
 
 ## 새 과목 추가하기
 
-1. 새 폴더(예: `docker/`)에 `index.html` 을 만들고, 상단 바에 허브 링크를 넣어 주세요.
+1. 새 폴더(예: `docker/`)를 만들고 `index.html` 에 공용 상단 바를 넣어 주세요.
    ```html
-   <a href="../index.html" class="hub-link" title="Dev Quest 홈" aria-label="Dev Quest 홈으로">⌂</a>
+   <link rel="stylesheet" href="../shared/dq.css" />
+   <header id="dqbar"></header>
+   <script src="../courses.js"></script>
+   <script src="../shared/dq.js"></script>
    ```
-2. [`courses.js`](courses.js) 에 항목을 하나 추가합니다. `storageKey` 는 다른 과목과 겹치지 않게 정해 주세요.
-3. 기존 과목에 문제를 추가하면 `courses.js` 의 `total` 도 같이 올려 주세요.
+   앱 코드에서는 `const bar = DevQuest.mountBar('docker')` 로 바를 만들고, 진행이 바뀔 때마다 `bar.update(DevQuest.stats(items, doneIds))` 를 호출해요. (`items` 는 `[{id, difficulty}]`, `difficulty` 는 `'easy'|'medium'|'hard'` 또는 1~5)
+2. [`courses.js`](courses.js) 에 항목을 하나 추가해요. 이름·아이콘·소개는 여기서만 정하므로 허브와 과목 화면의 제목이 항상 같아요.
+   - `storageKey` 와 `doneIds(saved)` : 앱이 저장한 진행 기록에서 완료한 퀘스트 id 를 꺼내는 방법
+   - `scripts()` 와 `items()` : 허브가 데이터 파일만 불러와 퀘스트 목록을 직접 만드는 방법 (전체 문제 수를 손으로 적지 않아요)
 
 ## 기록
 
-각 과목의 기존 저장소 커밋 기록은 `git subtree` 로 그대로 가져왔어요 (`git log -- linux/` 등으로 확인).
+세 프로젝트(`linux-terminal-game`, `sql-query-lab`, `git-playbook`)의 파일을 각 폴더로 복사해서 하나의 저장소로 합쳤어요. 기존 저장소의 커밋 기록은 가져오지 않았고, 이 저장소의 이력은 합친 시점의 `first commit` 부터 시작해요. 이전 이력은 원래 폴더에서 확인할 수 있어요.

@@ -7,6 +7,9 @@
   PROBLEMS.forEach((p) => { PROBLEMS_BY_ID[p.id] = p; });
 
   const STORAGE_KEY = 'sqlQueryLabProgress_v1';
+  // XP·레벨·티어 규칙은 ../shared/dq.js 의 공용 규칙을 써요 (과목 간 동일)
+  const dqBar = window.DevQuest.mountBar('sql');
+  const PROBLEM_ITEMS = PROBLEMS.map((p) => ({ id: p.id, difficulty: p.difficulty }));
 
   const state = {
     SQL: null,
@@ -133,7 +136,6 @@
    * DOM 참조
    * ========================================================== */
   const el = {
-    solvedCount: document.getElementById('solvedCount'),
     categoryListDetails: document.getElementById('categoryListDetails'),
     categoryList: document.getElementById('categoryList'),
     currentProblemLabel: document.getElementById('currentProblemLabel'),
@@ -197,65 +199,33 @@
    * 렌더링
    * ========================================================== */
   function renderHeader() {
-    el.solvedCount.textContent = `${state.solved.size} / ${PROBLEMS.length} 해결`;
+    dqBar.update(window.DevQuest.stats(PROBLEM_ITEMS, Array.from(state.solved)));
   }
 
   function renderSidebar() {
     const problem = PROBLEMS_BY_ID[state.currentProblemId];
     const currentCat = problem ? problem.category : null;
-    el.categoryList.innerHTML = '';
-    DATA.CATEGORIES.forEach((cat) => {
+    const DQ = window.DevQuest;
+    const opened = new Set(Array.from(el.categoryList.querySelectorAll('details.dq-cat[open]')).map((d) => d.dataset.cat));
+    const first = el.categoryList.children.length === 0;
+    el.categoryList.innerHTML = DATA.CATEGORIES.map((cat) => {
       const catProblems = PROBLEMS.filter((p) => p.category === cat.id);
-      const solvedInCat = catProblems.filter((p) => state.solved.has(p.id)).length;
-
-      const details = document.createElement('details');
-      details.className = 'category-block';
-      if (cat.id === currentCat) details.open = true;
-
-      const summary = document.createElement('summary');
-      const catLabel = document.createElement('span');
-      catLabel.textContent = `${cat.icon} ${cat.label}`;
-      const catProgress = document.createElement('span');
-      catProgress.className = 'cat-progress';
-      catProgress.textContent = `${solvedInCat}/${catProblems.length}`;
-      summary.appendChild(catLabel);
-      summary.appendChild(catProgress);
-      details.appendChild(summary);
-
-      const ul = document.createElement('ul');
-      ul.className = 'problem-list';
-      catProblems.forEach((p) => {
-        const li = document.createElement('li');
-        const solved = state.solved.has(p.id);
-        li.className = 'problem-item' + (solved ? ' done' : '') + (p.id === state.currentProblemId ? ' current' : '');
-        li.dataset.id = p.id;
-        const diff = DATA.DIFFICULTY_META[p.difficulty];
-        const icon = document.createElement('span');
-        icon.className = 'icon';
-        icon.textContent = solved ? '✅' : '▶';
-        const label = document.createElement('span');
-        label.className = 'problem-label';
-        label.textContent = p.title;
-        const badge = document.createElement('span');
-        badge.className = 'diff-badge diff-' + p.difficulty;
-        badge.textContent = diff.stars;
-        li.appendChild(icon);
-        li.appendChild(label);
-        li.appendChild(badge);
-        li.addEventListener('click', () => {
-          loadProblem(p.id);
-          if (window.matchMedia('(max-width: 700px)').matches) {
-            el.categoryListDetails.removeAttribute('open');
-          }
-        });
-        ul.appendChild(li);
-      });
-      details.appendChild(ul);
-      el.categoryList.appendChild(details);
-    });
+      const items = catProblems.map((p) => DQ.itemHtml({
+        id: p.id, title: p.title, difficulty: p.difficulty, done: state.solved.has(p.id), active: p.id === state.currentProblemId,
+      })).join('');
+      const done = catProblems.filter((p) => state.solved.has(p.id)).length;
+      return DQ.catHtml({ id: cat.id, icon: cat.icon, label: cat.label, desc: cat.desc, done, total: catProblems.length }, items, cat.id === currentCat || (!first && opened.has(cat.id)));
+    }).join('');
 
     if (problem) el.currentProblemLabel.textContent = '· ' + problem.title;
   }
+
+  el.categoryList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.dq-item');
+    if (!btn) return;
+    loadProblem(btn.dataset.id);
+    if (window.matchMedia('(max-width: 700px)').matches) el.categoryListDetails.removeAttribute('open');
+  });
 
   function renderProblemBrief(problem) {
     const diff = DATA.DIFFICULTY_META[problem.difficulty];
