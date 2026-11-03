@@ -137,9 +137,6 @@ See 'git help git' for an overview of the system.
       throw new GitError(msg, 1);
     }
     ctx.cmdName = cmd;
-    if (args.length === 1 && args[0] === '-h' && !['stash', 'branch', 'log', 'checkout', 'switch', 'tag'].includes('x')) {
-      // 대부분의 명령어는 -h 로 usage 를 보여준다 (여기서는 간단히 안내)
-    }
     handler(ctx, args);
   };
 
@@ -152,6 +149,4 @@ See 'git help git' for an overview of the system.
     ctx.print(`'git ${name}' 의 전체 매뉴얼(man page)은 이 시뮬레이터에서 보여주지 않아요.\n각 시나리오의 "왜 배우나요?" 개념 노트와 힌트를 참고하세요. (실제 터미널에서는 git help ${name} 또는 git ${name} --help)\n`);
   };
 
-  G.similarCommands = similarCommands;
-  G.GIT_USAGE = USAGE;
 })();

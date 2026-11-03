@@ -758,5 +758,4 @@
 
   G.Sim = Sim;
   G.Dir = Dir;
-  G.tokenizeShell = tokenize;
 })();

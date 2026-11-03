@@ -612,6 +612,4 @@
     if (count === 0 && !p.f.long) ctx.print(tags.get(best.h) + '\n');
     else ctx.print(`${tags.get(best.h)}-${count}-g${repo.shortHash(target, 7)}\n`);
   };
-
-  G.logHelpers = { parseRevArgs, formatCommitText, parseDateFilter };
 })();

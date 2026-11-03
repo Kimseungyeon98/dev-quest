@@ -613,8 +613,6 @@
 `;
   const CMD_ALIASES = { p: 'pick', pick: 'pick', r: 'reword', reword: 'reword', e: 'edit', edit: 'edit', s: 'squash', squash: 'squash', f: 'fixup', fixup: 'fixup', d: 'drop', drop: 'drop', x: 'exec', exec: 'exec', b: 'break', break: 'break' };
 
-  function rebaseHeadName(repo) { return repo.head.ref || 'detached HEAD'; }
-
   function startRebase(ctx, repo, rb) {
     // rb: { onto, ontoSpec, upstream, headName, origHead, todo, interactive, exec }
     const ident = R.identOf(ctx);
@@ -642,13 +640,6 @@
     repo.special.ORIG_HEAD = rb.origHead;
     delete repo.state.rebase;
     if (!rb.quiet) ctx.eprint(`\r\x1b[KSuccessfully rebased and updated ${rb.headName}.\n`);
-  }
-
-  function rebaseStop(ctx, repo, rb, entry, opts) {
-    // 충돌 등으로 멈춤
-    rb.conflict = !!opts.conflict;
-    rb.stoppedEdit = !!opts.edit;
-    throw fail('', 1);
   }
 
   function pickIntoRebase(ctx, repo, rb, entry) {

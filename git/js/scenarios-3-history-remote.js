@@ -11,7 +11,6 @@
     const picks = pl.initial.split('\n').filter((l) => /^pick /.test(l));
     return picks.map((l, i) => `${cmds[i] || 'pick'} ${l.split(' ')[1]} ${l.split(' ').slice(2).join(' ')}`).join('\n') + '\n';
   };
-  GP.todoHelper = todo;
 
   /* ================= 히스토리 정리 ================= */
   add({

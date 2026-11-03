@@ -460,7 +460,6 @@
       let name = f.name;
       if (name.length > nameWidth) {
         // 앞부분을 "..." 로 줄이고 가능하면 '/' 경계에서 자른다
-        let slash = -1;
         const cut = name.length - (nameWidth - 3);
         name = name.slice(cut);
         const idx = name.indexOf('/');

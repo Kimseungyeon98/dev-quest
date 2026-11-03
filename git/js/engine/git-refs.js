@@ -594,13 +594,6 @@ Turn off this advice by setting config variable advice.detachedHead to false
     return { matched: universe.size, updated };
   }
 
-  function noMatch(paths) { return fail(`error: pathspec '${paths.find(Boolean)}' did not match any file(s) known to git`, 1); }
-  function explainNoMatch(repo, paths, universe) {
-    const matcher = (s) => pathspecMatcher([s]);
-    const bad = paths.find((s) => { const m = matcher(s); let hit = false; universe.forEach((_, p) => { if (m(p)) hit = true; }); return !hit; });
-    return bad;
-  }
-
   COMMANDS.checkout = function (ctx, args) {
     const repo = C.requireRepo(ctx);
     const p = parseArgs(args, {

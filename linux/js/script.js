@@ -70,6 +70,25 @@
     return tokens;
   }
 
+  /* 따옴표 밖에 있는 연산자에서만 문자열을 나눈다. 결과는 [조각, 연산자, 조각, ...] 순서 (긴 연산자부터 맞춘다)
+     예: grep -E 'a|b' file | wc -l → ["grep -E 'a|b' file ", "|", " wc -l"] */
+  function splitUnquoted(s, ops) {
+    const sorted = ops.slice().sort((a, b) => b.length - a.length);
+    const out = [];
+    let cur = '';
+    let quote = null;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (quote) { cur += ch; if (ch === quote) quote = null; continue; }
+      if (ch === '"' || ch === "'") { quote = ch; cur += ch; continue; }
+      const op = sorted.find((o) => s.startsWith(o, i));
+      if (op) { out.push(cur, op); cur = ''; i += op.length - 1; continue; }
+      cur += ch;
+    }
+    out.push(cur);
+    return out;
+  }
+
   function wildcardToRegex(p) {
     const esc = p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
     return new RegExp('^' + esc + '$');
@@ -830,7 +849,7 @@
   }
 
   function executePipeline(raw, ctx) {
-    const stages = raw.split('|').map((s) => s.trim()).filter((s) => s.length > 0);
+    const stages = splitUnquoted(raw, ['|']).filter((s) => s !== '|').map((s) => s.trim()).filter((s) => s.length > 0);
     let stdin = null;
     let finalOutput = [];
     let error = null;
@@ -872,7 +891,8 @@
     return { output: finalOutput, error, clear, cmdName: lastCmdName, args: lastArgs, raw };
   }
 
-  /* &&, ; 로 여러 명령을 한 줄에 이어붙이는 체이닝. &&는 앞 명령이 성공해야 다음을 실행, ;는 항상 다음을 실행.
+  /* &&, ||, ; 로 여러 명령을 한 줄에 이어붙이는 체이닝. &&는 앞 명령이 성공해야, ||는 앞 명령이 실패해야 다음을 실행하고,
+     ;는 항상 다음을 실행. 따옴표 안의 연산자(예: awk '{print $1; print $2}')는 나누지 않는다.
      맨 끝에 단독 & 가 붙으면 백그라운드 작업(jobs)으로 등록한다. */
   function executeChain(raw, ctx) {
     const trimmed = raw.trim();
@@ -886,21 +906,21 @@
       execLine = execLine.slice(0, -1).trim();
     }
 
-    const parts = execLine.split(/(&&|;)/).map((s) => s.trim()).filter((s) => s.length > 0);
+    const parts = splitUnquoted(execLine, ['&&', '||', ';']).map((s) => s.trim()).filter((s) => s.length > 0);
     const segments = [];
-    let skipDueToError = false;
+    let failed = false;   // 마지막으로 실행한 명령의 실패 여부 (건너뛴 명령은 바꾸지 않는다)
     let pendingSep = null;
     for (const part of parts) {
-      if (part === '&&' || part === ';') { pendingSep = part; continue; }
-      if (pendingSep === '&&' && skipDueToError) { pendingSep = null; continue; }
+      if (part === '&&' || part === '||' || part === ';') { pendingSep = part; continue; }
+      if ((pendingSep === '&&' && failed) || (pendingSep === '||' && !failed)) { pendingSep = null; continue; }
       const segResult = executePipeline(part, ctx);
       segments.push(segResult);
-      skipDueToError = !!segResult.error;
+      failed = !!segResult.error;
       pendingSep = null;
     }
 
     let backgroundJob = null;
-    if (background && segments.length > 0 && !skipDueToError) {
+    if (background && segments.length > 0 && !failed) {
       ctx.jobs = ctx.jobs || [];
       backgroundJob = { id: ctx.jobs.length + 1, pid: 10000 + ctx.jobs.length, cmd: execLine };
       ctx.jobs.push(backgroundJob);
