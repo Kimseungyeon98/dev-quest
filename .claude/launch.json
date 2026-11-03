@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "dev-quest", "runtimeExecutable": "node", "runtimeArgs": ["algo/tools/serve.js", "8000"], "port": 8000 }
+  ]
+}

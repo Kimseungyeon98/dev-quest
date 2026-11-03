@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Algorithm Quest · Dev Quest</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="../shared/dq.css" />
+</head>
+<body>
+<div id="app">
+  <header id="dqbar">
+    <button id="cheatSheetBtn" class="bar-btn" data-dq-slot="actions" title="코딩테스트에 자주 쓰는 자바 문법">📖 자바 치트시트</button>
+  </header>
+
+  <div id="main">
+    <aside id="sidebar">
+      <details id="questListDetails" open>
+        <summary>퀘스트 목록 <span id="currentLabel" class="current-label"></span></summary>
+        <div id="questList"></div>
+      </details>
+    </aside>
+
+    <section id="problemPane">
+      <div class="problem-head">
+        <h2 id="problemTitle"></h2>
+        <div id="problemMeta" class="problem-meta"></div>
+      </div>
+      <div id="problemDesc" class="problem-desc"></div>
+      <h3>제한사항</h3>
+      <ul id="problemConstraints" class="problem-constraints"></ul>
+      <h3>입출력 예</h3>
+      <div id="problemExamples" class="examples-wrap"></div>
+      <div class="help-buttons">
+        <button id="hintBtn">💡 힌트</button>
+        <button id="conceptBtn">📚 왜 배우나요?</button>
+        <button id="answerBtn">🔑 모범 답안</button>
+      </div>
+      <div id="hintBox" class="help-box hidden"></div>
+      <div id="conceptBox" class="help-box hidden"></div>
+      <div id="answerBox" class="help-box hidden"></div>
+    </section>
+
+    <section id="codePane">
+      <div class="code-toolbar">
+        <span class="file-tab">Solution.java</span>
+        <span id="javaStatus" class="java-status" title="브라우저 안에서 동작하는 Java 17 (CheerpJ)">☕ Java 준비 전</span>
+        <button id="resetBtn" class="ghost-btn" title="시작 코드로 되돌리기">↺ 초기화</button>
+      </div>
+      <div id="editorWrap"><textarea id="editor" spellcheck="false" autocomplete="off"></textarea></div>
+      <div class="run-bar">
+        <span class="run-tip">Ctrl+Enter 실행 · Ctrl+Shift+Enter 제출</span>
+        <button id="runBtn" class="run-btn">▶ 코드 실행</button>
+        <button id="submitBtn" class="submit-btn">✅ 제출 후 채점하기</button>
+      </div>
+      <div id="resultPane">
+        <div id="resultBody" class="result-placeholder">"코드 실행"은 입출력 예만, "제출 후 채점하기"는 숨겨진 정확성·효율성 테스트까지 채점해요.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="cheatSheetModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="cheatSheetTitle">
+  <div class="modal-content">
+    <button id="closeCheatSheet" class="modal-close" aria-label="닫기">✕</button>
+    <h2 id="cheatSheetTitle">📖 코딩테스트 자바 치트시트</h2>
+    <div id="cheatSheetBody"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden" role="status"></div>
+<!-- CheerpJ 는 System.out/System.err 와 javac 메시지를 id="console" 요소에 써요 (화면에는 숨기고 결과만 읽어요) -->
+<pre id="console" hidden></pre>
+
+<script src="../courses.js"></script>
+<script src="../shared/dq.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
+<script src="js/problems.js"></script>
+<script src="js/judge.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

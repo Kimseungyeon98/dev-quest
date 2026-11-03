@@ -41,5 +41,14 @@
       scriptsAfter: () => window.GIT_PLAYBOOK_SCENARIO_FILES.map((f) => 'git/js/' + f),
       items: () => window.GP.scenarios.map((s) => ({ id: s.id, difficulty: s.level })),
     },
+    {
+      id: 'algo', path: 'algo/', icon: '🧩', name: 'Algorithm Quest', tagline: 'Java 로 푸는 코딩테스트 알고리즘',
+      desc: '브라우저 안의 진짜 Java 17 로 해시, 스택, 그리디, 이분 탐색, BFS, DP, 다익스트라까지.',
+      accent: '#a371f7',
+      storageKey: 'algoQuestProgress_v1',
+      doneIds: (saved) => saved.solved || [],
+      scripts: () => ['algo/js/problems.js'],
+      items: () => window.ALGO_DATA.PROBLEMS.map((p) => ({ id: p.id, difficulty: p.difficulty })),
+    },
   ];
 })();
