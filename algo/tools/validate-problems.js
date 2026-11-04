@@ -20,8 +20,9 @@ function compileAndRun(dir, p, solutionSrc, cases) {
   const ins = AJ.instrument(solutionSrc);
   fs.writeFileSync(path.join(dir, 'Solution.java'), ins.code);
   fs.writeFileSync(path.join(dir, 'Judge.java'), AJ.judgeSource(p));
+  fs.writeFileSync(path.join(dir, 'JudgeCore.java'), AJ.JUDGE_LIB);
   try {
-    execFileSync('javac', ['--release', '17', '-encoding', 'UTF-8', '-nowarn', '-d', dir, path.join(dir, 'Solution.java'), path.join(dir, 'Judge.java')], { stdio: 'pipe' });
+    execFileSync('javac', ['--release', '17', '-encoding', 'UTF-8', '-nowarn', '-d', dir, ...['Solution', 'Judge', 'JudgeCore'].map((f) => path.join(dir, f + '.java'))], { stdio: 'pipe' });
   } catch (e) {
     const out = String(e.stderr || e.stdout || e.message).replace(new RegExp(dir.replace(/\\/g, '\\\\').replace(/[.*+?^${}()|[\]]/g, '\\$&') + '[\\\\/]', 'g'), '');
     return { compileError: AJ.cleanCompilerOutput(out, solutionSrc, ins.inserts, p) };

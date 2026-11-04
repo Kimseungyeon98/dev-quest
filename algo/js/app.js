@@ -98,10 +98,78 @@
 
   /* ============================================================
    * Java 실행 (CheerpJ: 브라우저 안의 JVM 에서 진짜 javac 와 java 를 돌려요)
-   * 한 번에 하나만 실행할 수 있어서 작업을 줄 세워요.
+   * javac 를 매번 새로 띄우면 준비에만 4초 정도 걸려서, 상주 컴파일러(AlgoHost)를 라이브러리 모드로 올려 두고
+   * JavaCompiler·파일 매니저를 재사용해요 (컴파일 약 0.6초). 채점도 같은 JVM 에서 새 ClassLoader 로 실행해요.
+   * 라이브러리 모드를 쓸 수 없으면 javac 를 매번 띄우는 방식으로 돌아가요. 한 번에 하나만 실행할 수 있어서 작업을 줄 세워요.
    * ========================================================== */
+  // AlgoHost.class 는 /files/ (IndexedDB) 에 남아서 다음 방문 때는 다시 컴파일하지 않아요. 소스를 고치면 폴더 버전을 올리세요.
+  const HOST_DIR = '/files/algo-host-v3/';
+  const LIB_DIR = `/files/algo-lib-v${AJ.JUDGE_LIB_VERSION}/`; // 한 번만 컴파일해 두는 JudgeCore (judge.js)
+  const HOST_SRC = String.raw`import java.io.*;
+import java.lang.reflect.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import javax.tools.*;
+
+/* Algorithm Quest 상주 컴파일러: javac 와 파일 매니저를 한 번만 만들어 두고 재사용해요 */
+public class AlgoHost {
+    static JavaCompiler compiler;
+    static StandardJavaFileManager files;
+
+    /* request: 줄바꿈으로 이은 [출력 폴더, 클래스패스 폴더들(공백으로 구분), 소스 파일...].
+     * 결과: "OK\n" 또는 "FAIL\n" 뒤에 컴파일러 메시지 */
+    public static String compile(String request) {
+        try {
+            if (compiler == null) {
+                compiler = ToolProvider.getSystemJavaCompiler();
+                files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+            }
+            String[] parts = request.split("\n");
+            String classPath = String.join(File.pathSeparator, parts[1].trim().split(" "));
+            List<String> options = Arrays.asList("-d", parts[0], "-cp", classPath, "-encoding", "UTF-8", "-nowarn", "-proc:none");
+            List<File> sources = new ArrayList<>();
+            for (int i = 2; i < parts.length; i++) sources.add(new File(parts[i]));
+            StringWriter out = new StringWriter();
+            boolean ok = compiler.getTask(out, files, null, options, null, files.getJavaFileObjectsFromFiles(sources)).call();
+            return (ok ? "OK\n" : "FAIL\n") + out;
+        } catch (Throwable e) {
+            return "FAIL\n" + e;
+        }
+    }
+
+    /* 파일 매니저는 클래스패스 폴더 목록을 기억해 둬요. 클래스패스 폴더에 새 .class 를 만든 뒤에는 새로 만들어야 보여요 */
+    public static void reset() {
+        try { if (files != null) files.close(); } catch (IOException e) { }
+        compiler = null;
+        files = null;
+    }
+
+    /* 새 ClassLoader 로 cls.main(arg0, arg1) 을 실행해요 (매번 새로 읽어서 고친 코드와 새 static 값이 바로 반영돼요).
+     * classPath: 공백으로 구분한 폴더들 (같은 ClassLoader 에 넣어야 패키지 전용 클래스끼리 접근할 수 있어요). 결과: "OK" 또는 "ERR 오류" */
+    public static String run(String classPath, String cls, String arg0, String arg1) {
+        String[] dirs = classPath.trim().split(" ");
+        URL[] urls = new URL[dirs.length];
+        try {
+            for (int i = 0; i < dirs.length; i++) urls[i] = new File(dirs[i]).toURI().toURL();
+        } catch (Throwable e) {
+            return "ERR " + e;
+        }
+        try (URLClassLoader loader = new URLClassLoader(urls, AlgoHost.class.getClassLoader())) {
+            loader.loadClass(cls).getMethod("main", String[].class).invoke(null, (Object) new String[]{ arg0, arg1 });
+            return "OK";
+        } catch (InvocationTargetException e) {
+            return "ERR " + e.getCause();
+        } catch (Throwable e) {
+            return "ERR " + e;
+        }
+    }
+}
+`;
+
   const Java = {
     initPromise: null,
+    hostPromise: null,
     chain: Promise.resolve(),
     init() {
       if (!this.initPromise) {
@@ -111,6 +179,34 @@
       }
       return this.initPromise;
     },
+    /* 상주 컴파일러. 준비하지 못하면 null (javac 를 매번 띄우는 방식으로 대신해요) */
+    host() {
+      if (!this.hostPromise) {
+        this.hostPromise = (async () => {
+          await this.init();
+          if (typeof window.cheerpjRunLibrary !== 'function') return null;
+          if (!(await this.exists(HOST_DIR + 'AlgoHost.class'))) {
+            this.writeFile('/str/AlgoHost.java', HOST_SRC);
+            $('console').textContent = '';
+            const code = await window.cheerpjRunMain('com.sun.tools.javac.Main', HOST_DIR, '/str/AlgoHost.java', '-d', HOST_DIR, '-nowarn');
+            if (code !== 0) { console.warn('AlgoHost 컴파일 실패', this.console()); return null; }
+          }
+          const lib = await window.cheerpjRunLibrary(HOST_DIR);
+          const host = await lib.AlgoHost;
+          if (!(await this.exists(LIB_DIR + 'JudgeCore.class'))) {
+            this.writeFile('/str/JudgeCore.java', AJ.JUDGE_LIB);
+            const r = String(await host.compile([LIB_DIR, HOST_DIR, '/str/JudgeCore.java'].join('\n')));
+            if (!r.startsWith('OK')) { console.warn('JudgeCore 컴파일 실패', r); return null; }
+            await host.reset();
+          }
+          return host;
+        })().catch((e) => { console.warn('상주 컴파일러를 쓸 수 없어요', e); return null; });
+      }
+      return this.hostPromise;
+    },
+    async exists(path) {
+      try { return (await window.cjFileBlob(path)).size > 0; } catch (e) { return false; }
+    },
     enqueue(fn) {
       const r = this.chain.then(fn);
       this.chain = r.catch(() => {});
@@ -119,15 +215,30 @@
     writeFile(path, text) { window.cheerpOSAddStringFile(path, new TextEncoder().encode(text)); },
     console() { return $('console').textContent; },
     async compile(files) {
+      const host = await this.host();
+      // 상주 컴파일러가 없으면 JudgeCore 도 매번 같이 컴파일해요
+      const all = host ? files : { ...files, 'JudgeCore.java': AJ.JUDGE_LIB };
+      const paths = Object.keys(all).map((name) => { this.writeFile('/str/' + name, all[name]); return '/str/' + name; });
+      if (host) {
+        // 클래스패스에는 JudgeCore 폴더만 둬요 (Solution·Judge 는 매번 소스로 주니까요)
+        const r = String(await host.compile([OUT_DIR, LIB_DIR, ...paths].join('\n')));
+        const nl = r.indexOf('\n');
+        return { ok: r.slice(0, nl) === 'OK', output: r.slice(nl + 1) };
+      }
       $('console').textContent = '';
-      const paths = Object.keys(files).map((name) => { this.writeFile('/str/' + name, files[name]); return '/str/' + name; });
       const code = await window.cheerpjRunMain('com.sun.tools.javac.Main', OUT_DIR, ...paths, '-d', OUT_DIR, '-encoding', 'UTF-8', '-nowarn');
       return { ok: code === 0, output: this.console() };
     },
+    /* 결과의 output 은 System.err 처럼 콘솔로 나간 내용, error 는 실행 자체가 실패한 이유 */
     async run(cls, args) {
       $('console').textContent = '';
+      const host = await this.host();
+      if (host) {
+        const r = String(await host.run(OUT_DIR + ' ' + LIB_DIR, cls, args[0], args[1]));
+        return { error: r === 'OK' ? '' : r.replace(/^ERR /, ''), output: this.console() };
+      }
       const code = await window.cheerpjRunMain(cls, OUT_DIR, ...args);
-      return { code, output: this.console() };
+      return { error: code === 0 ? '' : `종료 코드 ${code}`, output: this.console() };
     },
     async read(path) { return (await window.cjFileBlob(path)).text(); },
   };
@@ -138,13 +249,16 @@
     el.className = 'java-status' + (cls ? ' ' + cls : '');
   }
 
-  /* 페이지를 열면 바로 javac 를 한 번 돌려 둬요 (첫 컴파일이 가장 느려서 문제를 읽는 동안 미리 데워요) */
+  /* 페이지를 열면 바로 상주 컴파일러를 올리고 한 번 컴파일해 둬요 (첫 컴파일이 가장 느려서 문제를 읽는 동안 미리 데워요) */
   function warmUp() {
     setJavaStatus('☕ Java 준비 중… (처음엔 30초 정도)', 'busy');
     Java.enqueue(async () => {
       await Java.init();
-      const c = await Java.compile({ 'Warm.java': 'public class Warm { public static void main(String[] a) { } }' });
-      if (c.ok) await Java.run('Warm', []);
+      // 지금 문제의 시작 코드로 두 번 컴파일해서 컴파일러의 JIT 를 데워 둬요 (두 번째부터 눈에 띄게 빨라져요)
+      const p = BY_ID[state.currentId];
+      const files = { 'Solution.java': AJ.instrument(AJ.starterCode(p)).code, 'Judge.java': AJ.judgeSource(p) };
+      await Java.compile(files);
+      await Java.compile(files);
     }).then(() => {
       state.javaReady = true;
       if (!state.busy) setJavaStatus('☕ Java 17 준비 완료', 'ready');
@@ -180,16 +294,18 @@
         if (!state.javaReady) showProgress('☕ Java 준비 중…', '처음 한 번은 Java 실행기를 내려받느라 30초 정도 걸려요.');
         await Java.init();
         showProgress('🔨 컴파일 중…', state.javaReady ? '' : '첫 컴파일은 조금 오래 걸려요.');
+        const tc = performance.now();
         const c = await Java.compile({ 'Solution.java': ins.code, 'Judge.java': AJ.judgeSource(p) });
         if (!c.ok) return { compileError: AJ.cleanCompilerOutput(c.output, src, ins.inserts, p) || '컴파일에 실패했어요.' };
         showProgress(`🏃 실행 중… (테스트 ${cases.length}개)`, mode === 'submit' ? '효율성 테스트는 입력이 커서 조금 걸릴 수 있어요.' : '');
+        const tr = performance.now();
         const token = 'r' + Date.now() + Math.random().toString(36).slice(2);
         Java.writeFile('/str/input.json', AJ.judgeInput(cases, token));
         const r = await Java.run('Judge', ['/str/input.json', OUT_DIR + 'result.json']);
         let parsed = null;
         try { parsed = JSON.parse(await Java.read(OUT_DIR + 'result.json')); } catch (e) { parsed = null; }
-        if (!parsed || parsed.token !== token) return { crash: (r.output || '').trim() || '채점 결과를 읽지 못했어요. 다시 시도해 주세요.' };
-        return { graded: AJ.grade(cases, parsed.results), stderr: r.output };
+        if (!parsed || parsed.token !== token) return { crash: [r.error, (r.output || '').trim()].filter(Boolean).join('\n') || '채점 결과를 읽지 못했어요. 다시 시도해 주세요.' };
+        return { graded: AJ.grade(cases, parsed.results), stderr: r.output, compileMs: tr - tc, runMs: performance.now() - tr };
       });
       state.javaReady = true;
     } catch (e) {
@@ -251,7 +367,7 @@
       html += `<div class="group-title">${GROUP_TITLE[kind]} · ${passed}/${list.length}</div>` + list.map((x) => caseHtml(p, x)).join('');
     });
     const total = g.length, passed = g.filter((x) => x.pass).length;
-    const secs = `걸린 시간 ${(elapsed / 1000).toFixed(1)}초 (컴파일 포함)`;
+    const secs = `걸린 시간 ${(elapsed / 1000).toFixed(1)}초 (컴파일 ${(r.compileMs / 1000).toFixed(1)}초 · 채점 ${(r.runMs / 1000).toFixed(1)}초)`;
     if (mode === 'run') {
       html += passed === total
         ? `<div class="verdict ok">입출력 예를 모두 통과했어요 👍<small>이제 "제출 후 채점하기"로 숨겨진 테스트까지 확인해 보세요. · ${secs}</small></div>`

@@ -1,6 +1,7 @@
 /* Algorithm Quest 채점기.
  * - 사용자 코드의 반복문 조건과 메서드 시작에 시간 검사(__T.c())를 끼워 넣어 무한 루프·시간 초과를 잡는다
- * - 문제의 메서드 시그니처로 채점용 Judge.java 를 만든다 (입력 JSON 을 읽어 solution 을 호출하고 결과를 JSON 으로 쓴다)
+ * - 채점용 자바 코드를 만든다: 모든 문제가 같이 쓰는 JudgeCore.java (입력 JSON 을 읽어 케이스별로 실행하고 결과를 JSON 으로 쓴다)
+ *   + 문제의 메서드 시그니처로 solution 을 부르는 짧은 Judge.java
  * - 채점 케이스(예제/정확성/효율성)를 만들고 결과를 비교한다
  * 브라우저(app.js)와 Node 검증 스크립트(tools/validate-problems.js)가 함께 써요. */
 (function (root) {
@@ -90,20 +91,23 @@ class Solution {
 `;
   }
 
-  /* Judge.java 본문. String.raw 라서 역슬래시가 그대로 들어가요 (자바 코드 안에 ${ 를 쓰지 않도록 주의). */
-  const JUDGE_TEMPLATE = String.raw`import java.io.*;
+  /* 모든 문제가 같이 쓰는 채점 코드 JudgeCore.java (입력 JSON 읽기, 케이스별 실행·시간 검사, 결과 JSON 쓰기).
+   * 브라우저에서는 한 번만 컴파일해서 저장해 두고, 매번은 사용자 코드와 짧은 Judge.java 만 컴파일해요.
+   * 내용을 고치면 JUDGE_LIB_VERSION 을 올려야 저장된 옛 .class 대신 새로 컴파일돼요.
+   * String.raw 라서 역슬래시가 그대로 들어가요 (자바 코드 안에 ${ 를 쓰지 않도록 주의). */
+  const JUDGE_LIB_VERSION = 1;
+  const JUDGE_LIB = String.raw`import java.io.*;
 import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 
-public class Judge {
-    static Object call(List<Object> a) throws Throwable {
-        /*CALL*/
-    }
+public final class JudgeCore {
+    /* 문제마다 만드는 Judge.java 가 넘겨주는 호출: 인자 목록 → new Solution().solution(...) 의 결과 */
+    public interface Call { Object call(List<Object> a) throws Throwable; }
 
     @SuppressWarnings("unchecked")
-    public static void main(String[] args) throws Exception {
+    public static void run(String[] args, Call call) throws Exception {
         String text = new String(Files.readAllBytes(Paths.get(args[0])), StandardCharsets.UTF_8);
         Map<String, Object> input = (Map<String, Object>) new J(text).value();
         List<Object> cases = (List<Object>) input.get("cases");
@@ -127,7 +131,7 @@ public class Judge {
             long t0 = System.nanoTime();
             __T.arm(limit);
             try {
-                Object r = call(a);
+                Object r = call.call(a);
                 __T.disarm();
                 val = J.json(r);
             } catch (__T.Timeout e) {
@@ -310,13 +314,19 @@ final class J {
 }
 `;
 
+  /* 문제마다 만드는 짧은 Judge.java: 인자를 매개변수 타입으로 바꿔 solution 을 부르고 나머지는 JudgeCore 에 맡긴다 */
   function judgeSource(p) {
     const m = p.method;
     const args = m.params.map((x, i) => {
       if (!CONV[x.type]) throw new Error(`지원하지 않는 매개변수 타입: ${x.type} (${p.id})`);
       return `${CONV[x.type]}(a.get(${i}))`;
     }).join(', ');
-    return JUDGE_TEMPLATE.replace('/*CALL*/', `return new Solution().${m.name}(${args});`);
+    return `public class Judge {
+    public static void main(String[] args) throws Exception {
+        JudgeCore.run(args, a -> new Solution().${m.name}(${args}));
+    }
+}
+`;
   }
 
   /* 채점 입력 파일 내용 */
@@ -503,6 +513,6 @@ final class J {
 
   root.AlgoJudge = {
     makeRand, buildCases, sameValue, formatValue, starterCode, judgeSource, judgeInput, grade,
-    instrument, cleanCompilerOutput, lexJava, DEFAULT_LIMIT_MS,
+    instrument, cleanCompilerOutput, lexJava, DEFAULT_LIMIT_MS, JUDGE_LIB, JUDGE_LIB_VERSION,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
