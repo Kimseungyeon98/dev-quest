@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="shared/dq.css" />
 <meta name="theme-color" content="#0d1117" />
 <title>Dev Quest — 게임으로 배우는 개발 명령어</title>
 <style>
@@ -14,6 +15,7 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.55; }
   .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 16px 64px; }
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
   header h1 { margin: 0; font-size: 28px; color: var(--strong); }
   header p { margin: 6px 0 0; color: var(--muted); }
 
@@ -83,8 +85,11 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>🎮 Dev Quest</h1>
-    <p>터미널과 에디터에 직접 입력하면서 배우는 개발 명령어 연습장</p>
+    <div>
+      <h1>🎮 Dev Quest</h1>
+      <p>터미널과 에디터에 직접 입력하면서 배우는 개발 명령어 연습장</p>
+    </div>
+    <div id="account"></div>
   </header>
 
   <section class="rank" id="rank" aria-label="전체 티어"></section>
@@ -102,6 +107,7 @@
 (function () {
   'use strict';
   const DQ = window.DevQuest;
+  DQ.mountAccount(document.getElementById('account'));
   const courses = window.DEV_QUEST_COURSES;
   const ITEMS_KEY = 'devQuest:items';   // 마지막으로 읽은 퀘스트 목록 (다음 방문 때 먼저 보여 주기 위한 캐시)
   const esc = DQ.esc;

@@ -1,0 +1,3 @@
+devquest:
+  limits:
+    signups-per-hour: 1000 # 테스트는 같은 IP(127.0.0.1)에서 계정을 많이 만들어요

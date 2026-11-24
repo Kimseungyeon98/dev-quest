@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0d1117" />
+<title>로그인 — Dev Quest</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #151b23; --panel-border: #2a313c; --field: #0d1117;
+    --text: #c9d1d9; --muted: #8b949e; --strong: #f0f6fc; --accent: #58a6ff; --danger: #ff7b72; --ok: #56d364;
+    --sans: -apple-system, BlinkMacSystemFont, "Pretendard", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
+  }
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+    background: radial-gradient(1200px 600px at 50% -10%, #1b2a40 0%, var(--bg) 60%); color: var(--text);
+    font-family: var(--sans); line-height: 1.5;
+  }
+  .card { width: 100%; max-width: 380px; }
+  .brand { text-align: center; margin-bottom: 22px; }
+  .brand h1 { margin: 0; font-size: 28px; color: var(--strong); }
+  .brand p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  .icons { margin-top: 10px; font-size: 20px; letter-spacing: 6px; }
+  .panel { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 14px; padding: 22px; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 18px; background: var(--field); border-radius: 10px; }
+  .tabs button {
+    font: inherit; font-size: 14px; font-weight: 700; padding: 8px; border: 0; border-radius: 7px; cursor: pointer;
+    background: none; color: var(--muted);
+  }
+  .tabs button[aria-selected="true"] { background: var(--panel-border); color: var(--strong); }
+  .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; color: var(--text); }
+  form > label:first-of-type { margin-top: 0; }
+  input[type="text"], input[type="password"] {
+    width: 100%; font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--panel-border); background: var(--field); color: var(--strong);
+  }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88,166,255,.2); }
+  input[aria-invalid="true"] { border-color: var(--danger); }
+  .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+  .remember { display: flex; align-items: center; gap: 8px; margin: 16px 0 0; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .remember input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+  .remember small { color: var(--muted); }
+  .error { min-height: 20px; margin: 14px 0 0; font-size: 13px; color: var(--danger); }
+  .submit {
+    width: 100%; margin-top: 8px; font: inherit; font-size: 15px; font-weight: 800; padding: 11px; border: 0; border-radius: 8px;
+    background: var(--accent); color: #0d1117; cursor: pointer;
+  }
+  .submit:hover { filter: brightness(1.08); }
+  .submit:disabled { opacity: .6; cursor: progress; }
+  .submit:focus-visible { outline: 2px solid var(--strong); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand">
+    <h1>🎮 Dev Quest</h1>
+    <p>로그인하면 어디서 접속하든 진행도가 이어져요</p>
+    <div class="icons" aria-hidden="true">🐧🗄️⎇🧩</div>
+  </div>
+
+  <div class="panel">
+    <div class="tabs" role="tablist" aria-label="로그인 또는 회원가입">
+      <button type="button" role="tab" id="tabLogin" aria-selected="true" aria-controls="form">로그인</button>
+      <button type="button" role="tab" id="tabSignup" aria-selected="false" aria-controls="form">회원가입</button>
+    </div>
+
+    <form id="form" role="tabpanel" novalidate>
+      <label for="username">아이디</label>
+      <input type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" required />
+      <p class="hint" id="usernameHint" hidden>영문·숫자·_ 4~20자 (대소문자는 구분하지 않아요)</p>
+
+      <label for="password">비밀번호</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" maxlength="64" required />
+      <p class="hint" id="passwordHint" hidden>8~64자, 영문과 숫자를 모두 넣어 주세요</p>
+
+      <div id="confirmRow" hidden>
+        <label for="password2">비밀번호 확인</label>
+        <input type="password" id="password2" name="password2" autocomplete="new-password" maxlength="64" />
+      </div>
+
+      <label class="remember"><input type="checkbox" id="rememberMe" /> 로그인 유지 <small>(30일 동안 자동 로그인)</small></label>
+
+      <p class="error" id="error" role="alert"></p>
+      <button type="submit" class="submit" id="submit">로그인</button>
+    </form>
+  </div>
+</main>
+<script src="../shared/dq.js"></script>
+<script src="login.js"></script>
+</body>
+</html>

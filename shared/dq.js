@@ -66,6 +66,45 @@
 
   function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+  /* ---------- 백엔드 API ----------
+   * 같은 주소의 Spring 백엔드를 불러요. POST/PUT/DELETE 는 XSRF-TOKEN 쿠키 값을 X-XSRF-TOKEN 헤더로 보내야 해요(CSRF).
+   * 돌려주는 값: { ok, status, data }  (data 는 JSON 응답, 오류면 { error: '화면에 보여 줄 문장' }) */
+  function cookie(name) {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()[\]\\/+^]/g, '\\$&') + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  async function api(path, opts) {
+    const o = opts || {};
+    const method = o.method || 'GET';
+    const headers = { Accept: 'application/json' };
+    if (o.body !== undefined) headers['Content-Type'] = 'application/json';
+    if (method !== 'GET' && method !== 'HEAD') { const t = cookie('XSRF-TOKEN'); if (t) headers['X-XSRF-TOKEN'] = t; }
+    let res;
+    try {
+      res = await fetch(path, { method, headers, credentials: 'same-origin', body: o.body !== undefined ? JSON.stringify(o.body) : undefined });
+    } catch (e) {
+      return { ok: false, status: 0, data: { error: '서버에 연결하지 못했어요. 네트워크를 확인해 주세요.' } };
+    }
+    let data = null;
+    if ((res.headers.get('Content-Type') || '').includes('json')) { try { data = await res.json(); } catch (e) { data = null; } }
+    return { ok: res.ok, status: res.status, data };
+  }
+
+  /* 로그인한 아이디와 로그아웃 버튼. 백엔드 없이 파일·serve.js 로 열면(/api/me 가 없으면) 아무것도 안 보여요 */
+  async function mountAccount(host) {
+    if (!host || location.protocol === 'file:') return;
+    host.classList.add('dq-account');
+    const r = await api('/api/me');
+    if (!r.ok || !r.data || !r.data.username) return;
+    host.innerHTML = `<span class="dq-user" title="로그인한 아이디"><span aria-hidden="true">👤</span><span class="dq-uname"> ${esc(r.data.username)}</span></span>`
+      + '<button type="button" class="dq-logout">로그아웃</button>';
+    host.querySelector('.dq-logout').addEventListener('click', logout);
+  }
+  async function logout() {
+    await api('/api/auth/logout', { method: 'POST' });
+    location.href = '/login/';
+  }
+
   /* 과목 상단 바. 페이지에 <header id="dqbar"></header> 를 두고 호출해요.
    * data-dq-slot="lead" / "actions" 가 붙은 자식은 해당 자리로 옮겨 줘요. */
   function mountBar(courseId) {
@@ -86,7 +125,9 @@
         <span class="dq-lv"></span>
         <div class="dq-xp"><i></i></div>
         <span class="dq-xptext"></span>
-      </div>`;
+      </div>
+      <div class="dq-account"></div>`;
+    mountAccount(host.querySelector('.dq-account'));
     (slots.lead || []).forEach((n) => host.querySelector('.dq-lead').appendChild(n));
     (slots.actions || []).forEach((n) => host.querySelector('.dq-actions').appendChild(n));
     return {
@@ -118,5 +159,5 @@
       + (cat.desc ? `<div class="dq-cat-desc">${esc(cat.desc)}</div>` : '') + bodyHtml + '</details>';
   }
 
-  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml };
+  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout };
 })();

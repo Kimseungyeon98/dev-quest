@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
+@org.springframework.test.context.ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class SchemaTest {

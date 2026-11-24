@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -21,9 +20,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *       맞게 풀리려면 주소가 / 로 끝나야 해요.</li>
  * </ul>
  * Spring 의 정적 리소스 처리는 폴더 주소를 index.html 로 바꿔 주지 않아서 필요해요. (루트 / 만 예외)
+ * 로그인 검사(Spring Security, 순서 -100)가 먼저 돌도록 그 뒤에 둬요.
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 10)
+@Order(0)
 public class StaticPageFilter extends OncePerRequestFilter {
 
     private static final String STATIC_ROOT = "static";

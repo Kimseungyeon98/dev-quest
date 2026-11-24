@@ -64,3 +64,17 @@
 .dq-item.done .dq-i-ti { color: var(--muted, #8b949e); }
 /* 난이도 표시 (모든 과목 공통 색) */
 .diff-easy { color: #56d364; } .diff-medium { color: #e3b341; } .diff-hard { color: #ff7b72; }
+/* 로그인한 아이디 + 로그아웃 (허브와 과목 상단 바 공통) */
+.dq-account:empty { display: none; }
+.dq-account { display: flex; align-items: center; gap: 8px; flex: none; font-size: 12px; color: var(--muted, #8b949e); }
+.dqbar .dq-account { margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--panel-border, #2a313c); }
+.dq-account .dq-user { white-space: nowrap; color: var(--text, #c9d1d9); font-weight: 600; }
+.dq-account .dq-logout {
+  font: inherit; color: inherit; background: none; cursor: pointer; white-space: nowrap;
+  border: 1px solid rgba(139,148,158,.4); border-radius: 6px; padding: 3px 8px;
+}
+.dq-account .dq-logout:hover, .dq-account .dq-logout:focus-visible { background: rgba(139,148,158,.18); color: var(--text, #c9d1d9); }
+@media (max-width: 760px) {
+  .dqbar .dq-account { padding-left: 8px; gap: 6px; }
+  .dqbar .dq-account .dq-uname { display: none; }
+}

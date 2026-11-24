@@ -26,7 +26,17 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
   ```bash
   DEVQUEST_TEST_EXTERNAL_DB=true SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/devquest_test ./gradlew test
   ```
-- 프론트만 고칠 때는 아래 `serve.js` 로 빌드 없이 바로 확인할 수 있어요.
+- 프론트만 고칠 때는 아래 `serve.js` 로 빌드 없이 바로 확인할 수 있어요. (로그인 없이 열리고, 상단 바의 계정 표시는 숨겨져요)
+
+### 로그인
+
+- 백엔드로 열면 로그인해야 사이트를 볼 수 있어요. 로그인 화면은 [`login/`](login/) 이에요.
+- 아이디(영문·숫자·_ 4~20자, 대소문자 구분 없음)와 비밀번호(8~64자, 영문+숫자)로 가입해요. 비밀번호는 bcrypt 로 저장해요.
+- 로그인 상태는 DB 세션(Spring Session JDBC)이라 재배포해도 유지돼요. 아무것도 안 하면 8시간 뒤 로그아웃돼요.
+- "로그인 유지"를 고르면 30일 동안 자동 로그인돼요. 토큰은 DB 에 저장하고 쓸 때마다 바뀌며, 이미 쓴 토큰이 다시 오면 도용으로 보고 그 계정의 자동 로그인을 모두 끊어요.
+- 같은 아이디+IP 로 15분 안에 5번 틀리면 15분 동안 로그인을 막고, 같은 IP 에서 1시간에 10번까지 가입할 수 있어요 (`devquest.limits.*`).
+- API: `POST /api/auth/signup` · `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/me`. POST 는 `XSRF-TOKEN` 쿠키 값을 `X-XSRF-TOKEN` 헤더로 보내야 해요 (프론트는 `DevQuest.api()` 가 알아서 해요).
+- 배포할 때 `REMEMBER_ME_KEY` 환경 변수에 임의의 긴 문자열을 넣어 두면 좋아요.
 
 ## Algorithm Quest 실행하기
 
