@@ -127,6 +127,7 @@ public class AlgoHost {
                 files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
             }
             String[] parts = request.split("\n");
+            clean(new File(parts[0]));
             String classPath = String.join(File.pathSeparator, parts[1].trim().split(" "));
             List<String> options = Arrays.asList("-d", parts[0], "-cp", classPath, "-encoding", "UTF-8", "-nowarn", "-proc:none");
             List<File> sources = new ArrayList<>();
@@ -137,6 +138,15 @@ public class AlgoHost {
         } catch (Throwable e) {
             return "FAIL\n" + e;
         }
+    }
+
+    /* 출력 폴더의 옛 .class 를 지워요. 다른 문제에서 만든 클래스(Node 등)가 남아 있으면
+     * 이번 코드에 없는 클래스인데도 컴파일·실행이 되어 버려요. 지우지 못해도 컴파일은 계속해요. */
+    static void clean(File dir) {
+        try {
+            File[] old = dir.listFiles((d, name) -> name.endsWith(".class"));
+            if (old != null) for (File f : old) f.delete();
+        } catch (Throwable e) { }
     }
 
     /* 파일 매니저는 클래스패스 폴더 목록을 기억해 둬요. 클래스패스 폴더에 새 .class 를 만든 뒤에는 새로 만들어야 보여요 */
