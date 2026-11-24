@@ -1,0 +1,33 @@
+name: validate
+
+# 퀘스트 데이터와 엔진을 고칠 때마다 검증 스크립트를 돌려요.
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Algorithm Quest 모범 답안을 진짜 javac / java 로 채점해요
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: JS 문법 검사
+        run: |
+          for f in $(git ls-files '*.js'); do node --check "$f"; done
+
+      - name: Git Quest 시나리오 검증
+        run: node git/tools/validate-scenarios.js
+
+      - name: Algorithm Quest 문제 검증
+        run: node algo/tools/validate-problems.js

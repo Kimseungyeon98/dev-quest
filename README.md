@@ -19,16 +19,21 @@ Algorithm Quest 는 브라우저 안의 JVM([CheerpJ](https://cheerpj.com/))으�
 node algo/tools/serve.js
 ```
 
-그다음 http://localhost:8000/ 을 열면 돼요 (GitHub Pages 같은 정적 호스팅에서도 그대로 동작해요).
+그다음 http://localhost:8000/ 을 열면 돼요 (GitHub Pages 같은 정적 호스팅에서도 그대로 동작해요). 서버는 기본으로 이 컴퓨터에서만 열려요. 같은 네트워크의 다른 기기에서 열려면 `HOST=0.0.0.0 node algo/tools/serve.js` 로 실행해요.
 
 - 문제 형식은 프로그래머스처럼 `class Solution` 의 `solution(...)` 메서드를 구현하는 방식이에요.
 - "코드 실행"은 입출력 예만, "제출 후 채점하기"는 숨겨진 정확성 테스트와 큰 입력의 효율성 테스트까지 채점해요.
 - 컴파일러는 페이지를 열 때 한 번 띄워 두고 계속 재사용해요(상주 컴파일러). 그래서 처음 준비만 오래 걸리고, 그다음부터 실행 한 번은 1초 안팎이에요. 상주 컴파일러와 공용 채점 코드(`JudgeCore`)는 브라우저 저장소에 남아서, 다시 방문하면 준비 시간도 짧아져요.
-- 채점할 때는 반복문과 메서드 시작 부분에 시간 검사를 끼워 넣어서, 무한 루프나 너무 느린 풀이를 케이스당 제한 시간(기본 3초)에 끊어요.
+- 채점할 때는 반복문·메서드·블록 람다 시작 부분에 시간 검사를 끼워 넣어서, 무한 루프나 너무 느린 풀이를 케이스당 제한 시간(기본 3초)에 끊어요. 그래도 끝나지 않으면(식 람다만 쓴 무한 스트림 등) 멈춘 것으로 보고 새로고침을 안내해요.
+- 채점용 코드가 쓰는 클래스 이름(`Judge`, `JudgeCore`, `__J`, `__T`)과 `System.exit()` 는 쓸 수 없어서, 컴파일 전에 안내해요.
 - 문제는 [`algo/js/problems.js`](algo/js/problems.js) 에 있어요. 문제를 추가·수정한 뒤에는 로컬 JDK 17 이상으로 검증해 주세요. JS 참조 풀이와 자바 모범 답안이 같은 답을 내는지, 모범 답안이 모든 테스트를 통과하는지 확인해요.
   ```bash
   node algo/tools/validate-problems.js
   ```
+
+## 자동 검증 (CI)
+
+푸시와 PR 마다 GitHub Actions([`.github/workflows/validate.yml`](.github/workflows/validate.yml))가 JS 문법 검사, Git Quest 시나리오 검증(`node git/tools/validate-scenarios.js`), Algorithm Quest 문제 검증(JDK 17)을 돌려요.
 
 ## 점수와 티어
 
