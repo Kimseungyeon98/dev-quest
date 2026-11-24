@@ -72,6 +72,17 @@ jobs:
       - name: 배포 이미지 빌드
         run: docker build -t dev-quest .
 
+      # 같은 Postgres 를 쓰는 다른 앱(public 스키마에 users·flyway 기록이 이미 있음)을 흉내 내요
+      - name: 다른 앱이 쓰던 DB 준비
+        env:
+          PGPASSWORD: ci-password
+        run: |
+          psql -h localhost -U postgres -d railway -v ON_ERROR_STOP=1 \
+            -c "create table users (id serial primary key, email text not null)" \
+            -c "insert into users (email) values ('other-app@example.com')" \
+            -c "create table flyway_schema_history (installed_rank int primary key, description text)" \
+            -c "insert into flyway_schema_history values (1, 'other app')"
+
       - name: 컨테이너 실행
         run: |
           docker run -d --name app --network host \
@@ -88,6 +99,14 @@ jobs:
           curl -fsS http://localhost:8080/actuator/health
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login/)" = 200
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/)" = 302
+
+      - name: 다른 앱의 테이블은 그대로인지 확인
+        env:
+          PGPASSWORD: ci-password
+        run: |
+          test "$(psql -h localhost -U postgres -d railway -tAc "select email from public.users")" = other-app@example.com
+          test "$(psql -h localhost -U postgres -d railway -tAc "select count(*) from public.flyway_schema_history")" = 1
+          test "$(psql -h localhost -U postgres -d railway -tAc "select count(*) from information_schema.tables where table_schema = 'devquest'")" = 6
 
       - name: 실패하면 앱 로그 출력
         if: failure()

@@ -67,7 +67,31 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 
 저장소 루트의 [`Dockerfile`](Dockerfile) 과 [`railway.json`](railway.json) 으로 배포해요. 이미지 하나에 백엔드와 학습 사이트가 같이 들어가고, 서버를 켤 때 Flyway 가 DB 테이블을 만들어요. CI 의 `docker` job 이 같은 이미지를 빌드해 Railway 처럼 띄워 보고 헬스체크까지 확인해요.
 
-### 처음 한 번 설정
+### DB 스키마
+
+dev-quest 는 모든 테이블을 PostgreSQL 의 **`devquest` 스키마**에 만들어요(`DB_SCHEMA` 로 바꿀 수 있어요). 그래서 다른 앱과 같은 Postgres·같은 DB 를 써도 `public` 스키마의 테이블(`users`, `flyway_schema_history` 등)과 겹치지 않고, 서로의 마이그레이션 기록도 따로 관리돼요.
+
+### 이미 있는 Railway 프로젝트에 추가하기 (Postgres 공유)
+
+다른 앱(예: luck-lounge)과 Postgres 가 올라가 있는 프로젝트에 서비스로 추가하면 돼요.
+
+1. 그 프로젝트에서 **+ New** (또는 **Create**) → **GitHub Repo** → `dev-quest` 를 골라요. 저장소의 `railway.json` 대로 Dockerfile 빌드·헬스체크가 설정돼요.
+2. 새로 생긴 dev-quest 서비스의 **Variables** 에 두 개를 넣어요.
+
+   | 이름 | 값 |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (Postgres 서비스 이름이 다르면 그 이름. **Add Reference** 로 골라도 돼요) |
+   | `REMEMBER_ME_KEY` | 임의의 긴 문자열 (아래 명령으로 만들어요) |
+
+   ```powershell
+   [Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
+   ```
+3. dev-quest 서비스의 **Settings** → **Networking** → **Generate Domain** 으로 주소를 만들어요.
+4. 배포가 끝나면 주소로 들어가 회원가입해요. 첫 실행 때 `devquest` 스키마와 테이블이 저절로 만들어지고, 다른 앱의 테이블은 건드리지 않아요.
+
+같은 프로젝트의 서비스들은 사용량(크레딧)을 함께 써요. 메모리가 부족하면 Railway 사용량 화면에서 서비스별 메모리를 확인해 주세요.
+
+### 새 프로젝트로 배포하기
 
 1. [railway.com](https://railway.com) 에 GitHub 계정으로 로그인 → **New Project** → **Deploy from GitHub repo** → `dev-quest` 저장소를 골라요.
    (Railway GitHub 앱이 저장소에 접근하도록 허용해야 목록에 보여요)
