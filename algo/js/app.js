@@ -313,8 +313,13 @@ public class AlgoHost {
     }
     setBusy(false);
     setJavaStatus(state.javaReady ? '☕ Java 17 준비 완료' : '⚠️ Java 를 준비하지 못했어요', state.javaReady ? 'ready' : 'error');
-    if (state.currentId !== p.id) return; // 실행 중에 다른 문제로 옮겼으면 결과를 버려요
-    renderResult(p, mode, result, performance.now() - t0);
+    // 정답 기록은 화면과 상관없이 먼저 저장해요 (채점 중에 다른 문제로 옮겨도 XP 를 잃지 않게)
+    const allPass = mode === 'submit' && result.graded && result.graded.every((x) => x.pass);
+    const first = allPass && markSolved(p.id);
+    if (first) toast(`🎉 「${p.title}」 정답! +${DQ.diffMeta(p.difficulty).xp} XP`);
+    if (state.currentId !== p.id) return; // 실행 중에 다른 문제로 옮겼으면 결과 화면은 그리지 않아요
+    if (first) loadProblemMeta(p); // "✓ 해결함" 표시
+    renderResult(p, mode, result, performance.now() - t0, first);
   }
 
   const STATUS_TEXT = { pass: '통과', fail: '실패', error: '실패 (런타임 에러)', timeout: '실패 (시간 초과)', skip: '건너뜀 (시간 초과가 반복돼서)' };
@@ -347,7 +352,7 @@ public class AlgoHost {
     return `<details class="case"${open}><summary>${head}</summary><dl class="case-detail">${dl}</dl></details>`;
   }
 
-  function renderResult(p, mode, r, elapsed) {
+  function renderResult(p, mode, r, elapsed, first) {
     const box = $('resultBody');
     box.className = '';
     if (r.compileError) {
@@ -373,10 +378,8 @@ public class AlgoHost {
         ? `<div class="verdict ok">입출력 예를 모두 통과했어요 👍<small>이제 "제출 후 채점하기"로 숨겨진 테스트까지 확인해 보세요. · ${secs}</small></div>`
         : `<div class="verdict ng">입출력 예 ${passed}/${total} 통과<small>틀린 예제를 펼쳐서 기댓값과 실행 결과를 비교해 보세요. · ${secs}</small></div>`;
     } else if (passed === total) {
-      const first = markSolved(p.id);
       const xp = DQ.diffMeta(p.difficulty).xp;
       html += `<div class="verdict ok">🎉 정답이에요! 모든 테스트를 통과했어요.<small>${first ? `+${xp} XP 획득 · ` : ''}${secs}</small></div>`;
-      if (first) toast(`🎉 정답! +${xp} XP`);
     } else {
       const part = (kind) => { const l = g.filter((x) => x.kind === kind); return l.length ? `${GROUP_TITLE[kind]} ${l.filter((x) => x.pass).length}/${l.length}` : ''; };
       const hint = g.some((x) => x.kind === 'big' && x.status === 'timeout') ? '효율성 테스트에서 시간 초과가 났어요. 더 빠른 알고리즘이 필요해요 — 힌트를 참고해 보세요.' : '틀린 테스트를 펼쳐서 입력값을 확인해 보세요.';
@@ -423,18 +426,22 @@ public class AlgoHost {
     return `<table class="examples"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
   }
 
+  function loadProblemMeta(p) {
+    const cat = CAT_BY_ID[p.category];
+    const d = DQ.diffMeta(p.difficulty);
+    $('problemMeta').innerHTML = `<span class="chip">${esc(cat.icon)} ${esc(cat.label)}</span>`
+      + `<span class="chip ${d.cls}">${d.stars} ${d.label} · ${d.xp} XP</span>`
+      + `<span class="chip">⏱ 케이스당 ${((p.limitMs || AJ.DEFAULT_LIMIT_MS) / 1000).toFixed(0)}초</span>`
+      + (state.solved.has(p.id) ? '<span class="chip solved">✓ 해결함</span>' : '');
+  }
+
   function loadProblem(id) {
     const p = BY_ID[id];
     if (!p) return;
     state.currentId = id;
     state.hintIndex = 0;
-    const cat = CAT_BY_ID[p.category];
-    const d = DQ.diffMeta(p.difficulty);
     $('problemTitle').textContent = p.title;
-    $('problemMeta').innerHTML = `<span class="chip">${esc(cat.icon)} ${esc(cat.label)}</span>`
-      + `<span class="chip ${d.cls}">${d.stars} ${d.label} · ${d.xp} XP</span>`
-      + `<span class="chip">⏱ 케이스당 ${((p.limitMs || AJ.DEFAULT_LIMIT_MS) / 1000).toFixed(0)}초</span>`
-      + (state.solved.has(id) ? '<span class="chip solved">✓ 해결함</span>' : '');
+    loadProblemMeta(p);
     $('problemDesc').innerHTML = paragraphs(p.desc);
     $('problemConstraints').innerHTML = p.constraints.map((c) => `<li>${inline(c)}</li>`).join('');
     $('problemExamples').innerHTML = examplesHtml(p);
