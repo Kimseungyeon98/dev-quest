@@ -103,9 +103,9 @@
    * JavaCompiler·파일 매니저를 재사용해요 (컴파일 약 0.6초). 채점도 같은 JVM 에서 새 ClassLoader 로 실행해요.
    * 라이브러리 모드를 쓸 수 없으면 javac 를 매번 띄우는 방식으로 돌아가요. 한 번에 하나만 실행할 수 있어서 작업을 줄 세워요.
    * ========================================================== */
-  // AlgoHost.class 는 /files/ (IndexedDB) 에 남아서 다음 방문 때는 다시 컴파일하지 않아요. 소스를 고치면 폴더 버전을 올리세요.
-  const HOST_DIR = '/files/algo-host-v3/';
-  const LIB_DIR = `/files/algo-lib-v${AJ.JUDGE_LIB_VERSION}/`; // 한 번만 컴파일해 두는 JudgeCore (judge.js)
+  // AlgoHost.class 와 JudgeCore.class 는 /files/ (IndexedDB) 에 남아서 다음 방문 때는 다시 컴파일하지 않아요.
+  // 폴더 이름에 소스 해시가 들어가서, 소스를 고치면 저절로 새 폴더에 다시 컴파일돼요. (HOST_DIR 은 HOST_SRC 아래에 있어요)
+  const LIB_DIR = `/files/algo-lib-${AJ.JUDGE_LIB_HASH}/`; // 한 번만 컴파일해 두는 JudgeCore (judge.js)
   const HOST_SRC = String.raw`import java.io.*;
 import java.lang.reflect.*;
 import java.net.*;
@@ -167,6 +167,7 @@ public class AlgoHost {
     }
 }
 `;
+  const HOST_DIR = `/files/algo-host-${AJ.hashText(HOST_SRC)}/`;
 
   const Java = {
     initPromise: null,

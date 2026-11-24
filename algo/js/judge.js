@@ -33,6 +33,14 @@
 
   const clone = (v) => JSON.parse(JSON.stringify(v));
 
+  /* 문자열 해시 (FNV-1a 32비트, 16진수 8자리). 브라우저에 저장해 두는 .class 폴더 이름에 붙여서
+   * 소스를 고치면 옛 .class 대신 새로 컴파일되게 해요. */
+  function hashText(text) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(16).padStart(8, '0');
+  }
+
   /* 채점 케이스. mode: 'run' (예제만) | 'submit' (예제 + 정확성 + 효율성)
    * tests 항목은 인자 배열이거나, 시드 난수를 받아 인자 배열을 돌려주는 함수예요. */
   function buildCases(p, mode) {
@@ -93,9 +101,8 @@ class Solution {
 
   /* 모든 문제가 같이 쓰는 채점 코드 JudgeCore.java (입력 JSON 읽기, 케이스별 실행·시간 검사, 결과 JSON 쓰기).
    * 브라우저에서는 한 번만 컴파일해서 저장해 두고, 매번은 사용자 코드와 짧은 Judge.java 만 컴파일해요.
-   * 내용을 고치면 JUDGE_LIB_VERSION 을 올려야 저장된 옛 .class 대신 새로 컴파일돼요.
+   * 저장 폴더 이름에 내용의 해시(JUDGE_LIB_HASH)가 들어가서, 내용을 고치면 저절로 새로 컴파일돼요.
    * String.raw 라서 역슬래시가 그대로 들어가요 (자바 코드 안에 ${ 를 쓰지 않도록 주의). */
-  const JUDGE_LIB_VERSION = 2;
   const JUDGE_LIB = String.raw`import java.io.*;
 import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
@@ -547,6 +554,6 @@ final class __J {
 
   root.AlgoJudge = {
     makeRand, buildCases, sameValue, formatValue, starterCode, judgeSource, judgeInput, grade,
-    instrument, checkSource, cleanCompilerOutput, lexJava, DEFAULT_LIMIT_MS, JUDGE_LIB, JUDGE_LIB_VERSION,
+    instrument, checkSource, cleanCompilerOutput, lexJava, DEFAULT_LIMIT_MS, JUDGE_LIB, JUDGE_LIB_HASH: hashText(JUDGE_LIB), hashText,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
