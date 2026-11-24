@@ -11,6 +11,23 @@
 
 과목은 서로 섞이지 않고 각자의 영역에서 공부해요. 루트의 `index.html` 은 과목 목록과 **종합 티어**를 보여 주는 허브예요.
 
+## 백엔드 (Spring Boot)
+
+계정과 진행도 저장을 위해 [`backend/`](backend/) 에 Spring Boot 4 · Java 21 · PostgreSQL 백엔드가 있어요. 학습 사이트 파일(HTML·JS·CSS)은 빌드할 때 jar 안으로 복사돼서 백엔드가 같은 주소에서 함께 서빙해요.
+
+```bash
+docker compose -f backend/compose.yaml up -d   # 로컬 PostgreSQL
+cd backend && ./gradlew bootRun                 # http://localhost:8080/
+```
+
+- DB 접속 정보는 `PGHOST` · `PGPORT` · `PGDATABASE` · `PGUSER` · `PGPASSWORD` 환경 변수로 받아요 (Railway PostgreSQL 이 넣어 주는 이름 그대로, 기본값은 `compose.yaml` 과 같아요).
+- 스키마는 Flyway 마이그레이션([`backend/src/main/resources/db/migration`](backend/src/main/resources/db/migration))만 바꿔요.
+- 테스트는 `./gradlew test` 예요. Testcontainers 로 PostgreSQL 을 띄우므로 Docker 가 필요해요. Docker 가 없으면 떠 있는 DB 로 돌릴 수 있어요:
+  ```bash
+  DEVQUEST_TEST_EXTERNAL_DB=true SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/devquest_test ./gradlew test
+  ```
+- 프론트만 고칠 때는 아래 `serve.js` 로 빌드 없이 바로 확인할 수 있어요.
+
 ## Algorithm Quest 실행하기
 
 Algorithm Quest 는 브라우저 안의 JVM([CheerpJ](https://cheerpj.com/))으로 **진짜 Java 17** 코드를 컴파일하고 채점해요. CheerpJ 는 `file://` 주소에서 동작하지 않아서 웹 서버로 열어야 하고, 처음 열 때 Java 실행기를 내려받느라 인터넷 연결이 필요해요.
@@ -33,7 +50,7 @@ node algo/tools/serve.js
 
 ## 자동 검증 (CI)
 
-푸시와 PR 마다 GitHub Actions([`.github/workflows/validate.yml`](.github/workflows/validate.yml))가 JS 문법 검사, Git Quest 시나리오 검증(`node git/tools/validate-scenarios.js`), Algorithm Quest 문제 검증(JDK 17)을 돌려요.
+푸시와 PR 마다 GitHub Actions([`.github/workflows/validate.yml`](.github/workflows/validate.yml))가 JS 문법 검사, Git Quest 시나리오 검증(`node git/tools/validate-scenarios.js`), Algorithm Quest 문제 검증(JDK 17), 백엔드 테스트(JDK 21 + Testcontainers)를 돌려요.
 
 ## 점수와 티어
 
@@ -54,7 +71,7 @@ node algo/tools/serve.js
    <script src="../shared/dq.js"></script>
    ```
    앱 코드에서는 `const bar = DevQuest.mountBar('docker')` 로 바를 만들고, 진행이 바뀔 때마다 `bar.update(DevQuest.stats(items, doneIds))` 를 호출해요. (`items` 는 `[{id, difficulty}]`, `difficulty` 는 `'easy'|'medium'|'hard'` 또는 1~5)
-2. [`courses.js`](courses.js) 에 항목을 하나 추가해요. 이름·아이콘·소개는 여기서만 정하므로 허브와 과목 화면의 제목이 항상 같아요.
+2. [`courses.js`](courses.js) 에 항목을 하나 추가해요. 백엔드가 서빙하도록 [`backend/build.gradle.kts`](backend/build.gradle.kts) 의 `siteIncludes` 에도 폴더를 추가해요. 이름·아이콘·소개는 여기서만 정하므로 허브와 과목 화면의 제목이 항상 같아요.
    - `storageKey` 와 `doneIds(saved)` : 앱이 저장한 진행 기록에서 완료한 퀘스트 id 를 꺼내는 방법
    - `scripts()` 와 `items()` : 허브가 데이터 파일만 불러와 퀘스트 목록을 직접 만드는 방법 (전체 문제 수를 손으로 적지 않아요)
 

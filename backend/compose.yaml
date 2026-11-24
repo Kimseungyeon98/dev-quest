@@ -1,0 +1,15 @@
+# 로컬 개발용 PostgreSQL:  docker compose -f backend/compose.yaml up -d
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: devquest
+      POSTGRES_USER: devquest
+      POSTGRES_PASSWORD: devquest
+    ports:
+      - "5432:5432"
+    volumes:
+      - devquest-pg:/var/lib/postgresql/data
+
+volumes:
+  devquest-pg:

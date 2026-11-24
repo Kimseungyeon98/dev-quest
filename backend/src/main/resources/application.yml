@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: dev-quest
+  # Railway 의 PostgreSQL 은 PGHOST·PGPORT·PGDATABASE·PGUSER·PGPASSWORD 를 넣어 줘요.
+  # 로컬에서는 backend/compose.yaml 의 값(기본값)으로 붙어요.
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:devquest}
+    username: ${PGUSER:devquest}
+    password: ${PGPASSWORD:devquest}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate # 스키마는 Flyway 마이그레이션만 바꿔요
+  flyway:
+    locations: classpath:db/migration
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          no-cache: true # 파일을 고치면 바로 반영 (ETag·Last-Modified 로 재검증)
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework # Railway 프록시 뒤에서 https 주소를 올바르게 인식
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,text/javascript,application/javascript,application/json
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
