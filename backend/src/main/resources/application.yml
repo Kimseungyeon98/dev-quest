@@ -2,9 +2,9 @@ spring:
   application:
     name: dev-quest
   # Railway 의 PostgreSQL 은 PGHOST·PGPORT·PGDATABASE·PGUSER·PGPASSWORD 를 넣어 줘요.
-  # 로컬에서는 backend/compose.yaml 의 값(기본값)으로 붙어요.
+  # 로컬에서는 backend/compose.yaml 의 값(기본값, 포트 5433)으로 붙어요.
   datasource:
-    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:devquest}
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5433}/${PGDATABASE:devquest}
     username: ${PGUSER:devquest}
     password: ${PGPASSWORD:devquest}
   jpa:

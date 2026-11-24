@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: devquest
       POSTGRES_PASSWORD: devquest
     ports:
-      - "5432:5432"
+      - "5433:5432" # PC 에 PostgreSQL 이 따로 설치돼 있어도 5432 와 겹치지 않게
     volumes:
       - devquest-pg:/var/lib/postgresql/data
 

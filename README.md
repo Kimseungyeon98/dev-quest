@@ -20,7 +20,7 @@ docker compose -f backend/compose.yaml up -d   # 로컬 PostgreSQL
 cd backend && ./gradlew bootRun                 # http://localhost:8080/
 ```
 
-- DB 접속 정보는 `PGHOST` · `PGPORT` · `PGDATABASE` · `PGUSER` · `PGPASSWORD` 환경 변수로 받아요 (Railway PostgreSQL 이 넣어 주는 이름 그대로, 기본값은 `compose.yaml` 과 같아요).
+- DB 접속 정보는 `PGHOST` · `PGPORT` · `PGDATABASE` · `PGUSER` · `PGPASSWORD` 환경 변수로 받아요 (Railway PostgreSQL 이 넣어 주는 이름 그대로, 기본값은 `compose.yaml` 과 같아요). 로컬 Docker DB 는 PC 에 설치된 PostgreSQL 과 겹치지 않도록 **5433** 포트를 써요.
 - 스키마는 Flyway 마이그레이션([`backend/src/main/resources/db/migration`](backend/src/main/resources/db/migration))만 바꿔요.
 - 테스트는 `./gradlew test` 예요. Testcontainers 로 PostgreSQL 을 띄우므로 Docker 가 필요해요. Docker 가 없으면 떠 있는 DB 로 돌릴 수 있어요:
   ```bash
