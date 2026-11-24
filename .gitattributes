@@ -1,0 +1,10 @@
+# Windows 에서 커밋해도 리눅스(Docker·Railway·CI)에서 실행되는 파일은 LF 로 유지해요
+* text=auto
+gradlew text eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf
+gradlew.bat text eol=crlf
+*.jar binary
+*.png binary
+*.ico binary
+*.wasm binary

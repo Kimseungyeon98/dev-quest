@@ -63,6 +63,34 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 - 상단 바의 ☁️ 는 저장 완료, ⏳ 는 저장 중, ⚠️ 는 저장 실패예요.
 - 백엔드 없이(파일·`serve.js`) 열면 예전처럼 이 브라우저에만 저장해요.
 
+## Railway 배포
+
+저장소 루트의 [`Dockerfile`](Dockerfile) 과 [`railway.json`](railway.json) 으로 배포해요. 이미지 하나에 백엔드와 학습 사이트가 같이 들어가고, 서버를 켤 때 Flyway 가 DB 테이블을 만들어요. CI 의 `docker` job 이 같은 이미지를 빌드해 Railway 처럼 띄워 보고 헬스체크까지 확인해요.
+
+### 처음 한 번 설정
+
+1. [railway.com](https://railway.com) 에 GitHub 계정으로 로그인 → **New Project** → **Deploy from GitHub repo** → `dev-quest` 저장소를 골라요.
+   (Railway GitHub 앱이 저장소에 접근하도록 허용해야 목록에 보여요)
+2. 같은 프로젝트에서 **+ New** (또는 **Create**) → **Database** → **PostgreSQL** 을 추가해요.
+3. 앱 서비스(dev-quest)의 **Variables** 에 두 개를 넣어요.
+
+   | 이름 | 값 |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (Postgres 서비스 이름이 다르면 그 이름으로. **Add Reference** 로 골라도 돼요) |
+   | `REMEMBER_ME_KEY` | 임의의 긴 문자열 (아래 명령으로 만들어요) |
+
+   ```powershell
+   [Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
+   ```
+4. 앱 서비스의 **Settings** → **Networking** → **Generate Domain** 으로 `https://…up.railway.app` 주소를 만들어요.
+5. 배포가 끝나면(헬스체크 `/actuator/health` 통과) 주소로 들어가 회원가입해요.
+
+### 그다음부터
+
+- `main` 에 푸시하면 Railway 가 자동으로 다시 빌드·배포해요. DB 스키마 변경은 Flyway 마이그레이션 파일만 추가하면 배포 때 적용돼요.
+- 로그는 앱 서비스의 **Deployments** → 배포 → **View Logs** 에서 봐요.
+- `PORT` 는 Railway 가 넣어 줘요. 나머지 설정(`devquest.limits.*` 등)은 환경 변수로 바꿀 수 있어요 (예: `DEVQUEST_LIMITS_SIGNUPS_PER_HOUR=20`).
+
 ## Algorithm Quest 실행하기
 
 Algorithm Quest 는 브라우저 안의 JVM([CheerpJ](https://cheerpj.com/))으로 **진짜 Java 17** 코드를 컴파일하고 채점해요. CheerpJ 는 `file://` 주소에서 동작하지 않아서 웹 서버로 열어야 하고, 처음 열 때 Java 실행기를 내려받느라 인터넷 연결이 필요해요.
@@ -85,7 +113,7 @@ node algo/tools/serve.js
 
 ## 자동 검증 (CI)
 
-푸시와 PR 마다 GitHub Actions([`.github/workflows/validate.yml`](.github/workflows/validate.yml))가 JS 문법 검사, Git Quest 시나리오 검증(`node git/tools/validate-scenarios.js`), Algorithm Quest 문제 검증(JDK 17), 백엔드 테스트(JDK 21 + Testcontainers)를 돌려요.
+푸시와 PR 마다 GitHub Actions([`.github/workflows/validate.yml`](.github/workflows/validate.yml))가 JS 문법 검사, Git Quest 시나리오 검증(`node git/tools/validate-scenarios.js`), Algorithm Quest 문제 검증(JDK 17), 백엔드 테스트(JDK 21 + Testcontainers), 배포 이미지 빌드·실행 확인(Docker)을 돌려요.
 
 ## 점수와 티어
 

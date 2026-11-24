@@ -50,3 +50,45 @@ jobs:
 
       - name: 테스트
         run: ./gradlew test --console=plain
+
+  # Railway 와 같은 Dockerfile 로 이미지를 만들고, Railway 처럼 PORT·DATABASE_URL 만 주고 띄워 봐요
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: railway
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 배포 이미지 빌드
+        run: docker build -t dev-quest .
+
+      - name: 컨테이너 실행
+        run: |
+          docker run -d --name app --network host \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgresql://postgres:ci-password@localhost:5432/railway \
+            dev-quest
+
+      - name: 헬스체크·로그인 화면 확인
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/actuator/health | grep -q '"UP"'; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/actuator/health
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login/)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/)" = 302
+
+      - name: 실패하면 앱 로그 출력
+        if: failure()
+        run: docker logs app || true

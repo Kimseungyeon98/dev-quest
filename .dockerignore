@@ -1,0 +1,13 @@
+# Docker 빌드에 필요 없는 파일 (빌드를 빠르게, 이미지에 비밀이 섞이지 않게)
+.git
+.github
+.idea
+.claude
+**/.DS_Store
+**/Thumbs.db
+backend/build
+backend/.gradle
+**/node_modules
+*.log
+.env
+.env.*
