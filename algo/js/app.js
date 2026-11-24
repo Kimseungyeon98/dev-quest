@@ -14,6 +14,7 @@
   const dqBar = DQ.mountBar('algo');
   const ITEMS = PROBLEMS.map((p) => ({ id: p.id, difficulty: p.difficulty }));
   const OUT_DIR = '/files/algo/'; // 컴파일된 .class 와 채점 결과가 저장되는 CheerpJ 가상 폴더 (IndexedDB)
+  const RUN_GRACE_MS = 15000; // 케이스 제한 시간 합계에 더해 기다리는 여유 시간 (이보다 오래 걸리면 JVM 이 멈춘 것으로 봐요)
 
   const $ = (id) => document.getElementById(id);
   const esc = DQ.esc;
@@ -102,9 +103,9 @@
    * JavaCompiler·파일 매니저를 재사용해요 (컴파일 약 0.6초). 채점도 같은 JVM 에서 새 ClassLoader 로 실행해요.
    * 라이브러리 모드를 쓸 수 없으면 javac 를 매번 띄우는 방식으로 돌아가요. 한 번에 하나만 실행할 수 있어서 작업을 줄 세워요.
    * ========================================================== */
-  // AlgoHost.class 는 /files/ (IndexedDB) 에 남아서 다음 방문 때는 다시 컴파일하지 않아요. 소스를 고치면 폴더 버전을 올리세요.
-  const HOST_DIR = '/files/algo-host-v3/';
-  const LIB_DIR = `/files/algo-lib-v${AJ.JUDGE_LIB_VERSION}/`; // 한 번만 컴파일해 두는 JudgeCore (judge.js)
+  // AlgoHost.class 와 JudgeCore.class 는 /files/ (IndexedDB) 에 남아서 다음 방문 때는 다시 컴파일하지 않아요.
+  // 폴더 이름에 소스 해시가 들어가서, 소스를 고치면 저절로 새 폴더에 다시 컴파일돼요. (HOST_DIR 은 HOST_SRC 아래에 있어요)
+  const LIB_DIR = `/files/algo-lib-${AJ.JUDGE_LIB_HASH}/`; // 한 번만 컴파일해 두는 JudgeCore (judge.js)
   const HOST_SRC = String.raw`import java.io.*;
 import java.lang.reflect.*;
 import java.net.*;
@@ -126,6 +127,7 @@ public class AlgoHost {
                 files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
             }
             String[] parts = request.split("\n");
+            clean(new File(parts[0]));
             String classPath = String.join(File.pathSeparator, parts[1].trim().split(" "));
             List<String> options = Arrays.asList("-d", parts[0], "-cp", classPath, "-encoding", "UTF-8", "-nowarn", "-proc:none");
             List<File> sources = new ArrayList<>();
@@ -136,6 +138,15 @@ public class AlgoHost {
         } catch (Throwable e) {
             return "FAIL\n" + e;
         }
+    }
+
+    /* 출력 폴더의 옛 .class 를 지워요. 다른 문제에서 만든 클래스(Node 등)가 남아 있으면
+     * 이번 코드에 없는 클래스인데도 컴파일·실행이 되어 버려요. 지우지 못해도 컴파일은 계속해요. */
+    static void clean(File dir) {
+        try {
+            File[] old = dir.listFiles((d, name) -> name.endsWith(".class"));
+            if (old != null) for (File f : old) f.delete();
+        } catch (Throwable e) { }
     }
 
     /* 파일 매니저는 클래스패스 폴더 목록을 기억해 둬요. 클래스패스 폴더에 새 .class 를 만든 뒤에는 새로 만들어야 보여요 */
@@ -166,6 +177,7 @@ public class AlgoHost {
     }
 }
 `;
+  const HOST_DIR = `/files/algo-host-${AJ.hashText(HOST_SRC)}/`;
 
   const Java = {
     initPromise: null,
@@ -284,6 +296,8 @@ public class AlgoHost {
     if (state.busy) return;
     const p = BY_ID[state.currentId];
     const src = editor.get();
+    const blocked = AJ.checkSource(src);
+    if (blocked) { renderResult(p, mode, { compileError: blocked }, 0, false); return; }
     setBusy(true);
     const t0 = performance.now();
     let result;
@@ -301,7 +315,13 @@ public class AlgoHost {
         const tr = performance.now();
         const token = 'r' + Date.now() + Math.random().toString(36).slice(2);
         Java.writeFile('/str/input.json', AJ.judgeInput(cases, token));
-        const r = await Java.run('Judge', ['/str/input.json', OUT_DIR + 'result.json']);
+        // 시간 검사가 닿지 않는 코드(식 람다만 쓴 무한 스트림 등)는 JVM 이 끝나지 않아요. 넉넉히 기다린 뒤 멈춘 것으로 봐요.
+        const budget = cases.reduce((sum, c) => sum + c.limit, 0) + RUN_GRACE_MS;
+        const r = await Promise.race([
+          Java.run('Judge', ['/str/input.json', OUT_DIR + 'result.json']),
+          new Promise((resolve) => setTimeout(() => resolve(null), budget)),
+        ]);
+        if (!r) return { stuck: true };
         let parsed = null;
         try { parsed = JSON.parse(await Java.read(OUT_DIR + 'result.json')); } catch (e) { parsed = null; }
         if (!parsed || parsed.token !== token) return { crash: [r.error, (r.output || '').trim()].filter(Boolean).join('\n') || '채점 결과를 읽지 못했어요. 다시 시도해 주세요.' };
@@ -311,10 +331,23 @@ public class AlgoHost {
     } catch (e) {
       result = { crash: e.message || String(e) };
     }
+    if (result.stuck) {
+      // 멈춘 JVM 은 되살릴 수 없어서 새로고침할 때까지 실행 버튼을 잠가 둬요 (작성한 코드는 이미 저장돼 있어요)
+      setJavaStatus('⚠️ Java 가 멈췄어요 — 새로고침해 주세요', 'error');
+      renderResult(p, mode, { crash: `제한 시간을 한참 넘겨도 실행이 끝나지 않아서 멈춘 것으로 봤어요.\n`
+        + `시간 검사가 닿지 않는 곳(예: 식 람다만 쓴 무한 스트림)에서 무한 루프가 도는 것 같아요.\n\n`
+        + `작성한 코드는 저장돼 있어요. 페이지를 새로고침한 뒤 코드를 고쳐서 다시 실행해 주세요.` }, performance.now() - t0, false);
+      return;
+    }
     setBusy(false);
     setJavaStatus(state.javaReady ? '☕ Java 17 준비 완료' : '⚠️ Java 를 준비하지 못했어요', state.javaReady ? 'ready' : 'error');
-    if (state.currentId !== p.id) return; // 실행 중에 다른 문제로 옮겼으면 결과를 버려요
-    renderResult(p, mode, result, performance.now() - t0);
+    // 정답 기록은 화면과 상관없이 먼저 저장해요 (채점 중에 다른 문제로 옮겨도 XP 를 잃지 않게)
+    const allPass = mode === 'submit' && result.graded && result.graded.every((x) => x.pass);
+    const first = allPass && markSolved(p.id);
+    if (first) toast(`🎉 「${p.title}」 정답! +${DQ.diffMeta(p.difficulty).xp} XP`);
+    if (state.currentId !== p.id) return; // 실행 중에 다른 문제로 옮겼으면 결과 화면은 그리지 않아요
+    if (first) loadProblemMeta(p); // "✓ 해결함" 표시
+    renderResult(p, mode, result, performance.now() - t0, first);
   }
 
   const STATUS_TEXT = { pass: '통과', fail: '실패', error: '실패 (런타임 에러)', timeout: '실패 (시간 초과)', skip: '건너뜀 (시간 초과가 반복돼서)' };
@@ -347,7 +380,7 @@ public class AlgoHost {
     return `<details class="case"${open}><summary>${head}</summary><dl class="case-detail">${dl}</dl></details>`;
   }
 
-  function renderResult(p, mode, r, elapsed) {
+  function renderResult(p, mode, r, elapsed, first) {
     const box = $('resultBody');
     box.className = '';
     if (r.compileError) {
@@ -373,10 +406,8 @@ public class AlgoHost {
         ? `<div class="verdict ok">입출력 예를 모두 통과했어요 👍<small>이제 "제출 후 채점하기"로 숨겨진 테스트까지 확인해 보세요. · ${secs}</small></div>`
         : `<div class="verdict ng">입출력 예 ${passed}/${total} 통과<small>틀린 예제를 펼쳐서 기댓값과 실행 결과를 비교해 보세요. · ${secs}</small></div>`;
     } else if (passed === total) {
-      const first = markSolved(p.id);
       const xp = DQ.diffMeta(p.difficulty).xp;
       html += `<div class="verdict ok">🎉 정답이에요! 모든 테스트를 통과했어요.<small>${first ? `+${xp} XP 획득 · ` : ''}${secs}</small></div>`;
-      if (first) toast(`🎉 정답! +${xp} XP`);
     } else {
       const part = (kind) => { const l = g.filter((x) => x.kind === kind); return l.length ? `${GROUP_TITLE[kind]} ${l.filter((x) => x.pass).length}/${l.length}` : ''; };
       const hint = g.some((x) => x.kind === 'big' && x.status === 'timeout') ? '효율성 테스트에서 시간 초과가 났어요. 더 빠른 알고리즘이 필요해요 — 힌트를 참고해 보세요.' : '틀린 테스트를 펼쳐서 입력값을 확인해 보세요.';
@@ -423,18 +454,22 @@ public class AlgoHost {
     return `<table class="examples"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
   }
 
+  function loadProblemMeta(p) {
+    const cat = CAT_BY_ID[p.category];
+    const d = DQ.diffMeta(p.difficulty);
+    $('problemMeta').innerHTML = `<span class="chip">${esc(cat.icon)} ${esc(cat.label)}</span>`
+      + `<span class="chip ${d.cls}">${d.stars} ${d.label} · ${d.xp} XP</span>`
+      + `<span class="chip">⏱ 케이스당 ${((p.limitMs || AJ.DEFAULT_LIMIT_MS) / 1000).toFixed(0)}초</span>`
+      + (state.solved.has(p.id) ? '<span class="chip solved">✓ 해결함</span>' : '');
+  }
+
   function loadProblem(id) {
     const p = BY_ID[id];
     if (!p) return;
     state.currentId = id;
     state.hintIndex = 0;
-    const cat = CAT_BY_ID[p.category];
-    const d = DQ.diffMeta(p.difficulty);
     $('problemTitle').textContent = p.title;
-    $('problemMeta').innerHTML = `<span class="chip">${esc(cat.icon)} ${esc(cat.label)}</span>`
-      + `<span class="chip ${d.cls}">${d.stars} ${d.label} · ${d.xp} XP</span>`
-      + `<span class="chip">⏱ 케이스당 ${((p.limitMs || AJ.DEFAULT_LIMIT_MS) / 1000).toFixed(0)}초</span>`
-      + (state.solved.has(id) ? '<span class="chip solved">✓ 해결함</span>' : '');
+    loadProblemMeta(p);
     $('problemDesc').innerHTML = paragraphs(p.desc);
     $('problemConstraints').innerHTML = p.constraints.map((c) => `<li>${inline(c)}</li>`).join('');
     $('problemExamples').innerHTML = examplesHtml(p);
