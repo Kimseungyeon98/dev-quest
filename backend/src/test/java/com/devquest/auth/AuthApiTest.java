@@ -49,7 +49,7 @@ class AuthApiTest {
 
     @Test
     void 회원가입하면_바로_로그인되고_아이디는_소문자로_저장() throws Exception {
-        String name = "Mixed_" + SEQ.incrementAndGet() + "Ab";
+        String name = "Mixed_" + (System.nanoTime() % 100000) + "Ab" + SEQ.incrementAndGet();
         var res = web.post("/api/auth/signup", json(name, PW, false));
         assertThat(res.statusCode()).isEqualTo(201);
         assertThat(res.body()).contains("\"username\":\"" + name.toLowerCase() + "\"");

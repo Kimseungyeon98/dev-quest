@@ -2,6 +2,10 @@ package com.devquest.web;
 
 import com.devquest.auth.AuthController.BadLoginException;
 import com.devquest.auth.AuthController.TooManyAttemptsException;
+import com.devquest.progress.ProgressService.BadProgressException;
+import com.devquest.progress.ProgressService.ProgressTooLargeException;
+import com.devquest.progress.ProgressService.UnknownCourseException;
+import com.devquest.progress.ProgressService.VersionConflictException;
 import com.devquest.user.UserService.DuplicateUsernameException;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
@@ -45,5 +49,26 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(Math.max(1, e.getRetryAfter().toSeconds())))
                 .body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(UnknownCourseException.class)
+    ResponseEntity<Map<String, String>> unknownCourse(UnknownCourseException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(BadProgressException.class)
+    ResponseEntity<Map<String, String>> badProgress(BadProgressException e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(ProgressTooLargeException.class)
+    ResponseEntity<Map<String, String>> tooLarge(ProgressTooLargeException e) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).body(Map.of("error", e.getMessage()));
+    }
+
+    /** 다른 기기에서 먼저 저장했어요. 최신 기록(current)을 같이 줘서 프론트가 합친 뒤 다시 저장해요 */
+    @ExceptionHandler(VersionConflictException.class)
+    ResponseEntity<Map<String, Object>> conflict(VersionConflictException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage(), "current", e.getCurrent()));
     }
 }

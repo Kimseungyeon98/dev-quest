@@ -38,6 +38,19 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 - API: `POST /api/auth/signup` · `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/me`. POST 는 `XSRF-TOKEN` 쿠키 값을 `X-XSRF-TOKEN` 헤더로 보내야 해요 (프론트는 `DevQuest.api()` 가 알아서 해요).
 - 배포할 때 `REMEMBER_ME_KEY` 환경 변수에 임의의 긴 문자열을 넣어 두면 좋아요.
 
+### 진행도 API
+
+과목 앱이 저장하던 JSON 을 과목별로 그대로 계정에 저장해요. `version` 으로 여러 기기의 동시 저장을 막아요(낙관적 잠금).
+
+| 요청 | 설명 |
+|---|---|
+| `GET /api/progress` | `{ courses: { algo: { data, version, updatedAt }, ... } }` — 저장한 과목만 |
+| `GET /api/progress/{과목}` | `{ data, version, updatedAt }` — 저장한 적 없으면 `data: null, version: 0` |
+| `PUT /api/progress/{과목}` | 본문 `{ data, version }` (version 은 마지막으로 받은 값, 처음이면 0) → 새 `{ data, version, updatedAt }` |
+
+- 다른 기기에서 먼저 저장해서 version 이 다르면 `409` 와 함께 최신 기록을 `current` 로 돌려줘요. 프론트는 두 기록을 합쳐서 `current.version` 으로 다시 저장하면 돼요.
+- 과목은 `devquest.progress.courses`(linux, sql, git, algo)만 받고, 과목 하나는 최대 512KB 예요(`devquest.progress.max-bytes`).
+
 ## Algorithm Quest 실행하기
 
 Algorithm Quest 는 브라우저 안의 JVM([CheerpJ](https://cheerpj.com/))으로 **진짜 Java 17** 코드를 컴파일하고 채점해요. CheerpJ 는 `file://` 주소에서 동작하지 않아서 웹 서버로 열어야 하고, 처음 열 때 Java 실행기를 내려받느라 인터넷 연결이 필요해요.
@@ -81,7 +94,7 @@ node algo/tools/serve.js
    <script src="../shared/dq.js"></script>
    ```
    앱 코드에서는 `const bar = DevQuest.mountBar('docker')` 로 바를 만들고, 진행이 바뀔 때마다 `bar.update(DevQuest.stats(items, doneIds))` 를 호출해요. (`items` 는 `[{id, difficulty}]`, `difficulty` 는 `'easy'|'medium'|'hard'` 또는 1~5)
-2. [`courses.js`](courses.js) 에 항목을 하나 추가해요. 백엔드가 서빙하도록 [`backend/build.gradle.kts`](backend/build.gradle.kts) 의 `siteIncludes` 에도 폴더를 추가해요. 이름·아이콘·소개는 여기서만 정하므로 허브와 과목 화면의 제목이 항상 같아요.
+2. [`courses.js`](courses.js) 에 항목을 하나 추가해요. 백엔드가 서빙하도록 [`backend/build.gradle.kts`](backend/build.gradle.kts) 의 `siteIncludes` 에 폴더를, [`application.yml`](backend/src/main/resources/application.yml) 의 `devquest.progress.courses` 에 과목 id 를 추가해요. 이름·아이콘·소개는 여기서만 정하므로 허브와 과목 화면의 제목이 항상 같아요.
    - `storageKey` 와 `doneIds(saved)` : 앱이 저장한 진행 기록에서 완료한 퀘스트 id 를 꺼내는 방법
    - `scripts()` 와 `items()` : 허브가 데이터 파일만 불러와 퀘스트 목록을 직접 만드는 방법 (전체 문제 수를 손으로 적지 않아요)
 

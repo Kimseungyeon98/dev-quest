@@ -10,4 +10,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** ux_users_username_lower 인덱스를 타도록 lower() 로 비교해요 */
     @Query("select u from User u where lower(u.username) = lower(:username)")
     Optional<User> findByUsernameIgnoreCase(@Param("username") String username);
+
+    @Query("select u.id from User u where lower(u.username) = lower(:username)")
+    Optional<Long> findIdByUsername(@Param("username") String username);
 }
