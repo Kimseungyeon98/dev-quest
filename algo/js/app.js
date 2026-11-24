@@ -14,6 +14,7 @@
   const dqBar = DQ.mountBar('algo');
   const ITEMS = PROBLEMS.map((p) => ({ id: p.id, difficulty: p.difficulty }));
   const OUT_DIR = '/files/algo/'; // 컴파일된 .class 와 채점 결과가 저장되는 CheerpJ 가상 폴더 (IndexedDB)
+  const RUN_GRACE_MS = 15000; // 케이스 제한 시간 합계에 더해 기다리는 여유 시간 (이보다 오래 걸리면 JVM 이 멈춘 것으로 봐요)
 
   const $ = (id) => document.getElementById(id);
   const esc = DQ.esc;
@@ -303,7 +304,13 @@ public class AlgoHost {
         const tr = performance.now();
         const token = 'r' + Date.now() + Math.random().toString(36).slice(2);
         Java.writeFile('/str/input.json', AJ.judgeInput(cases, token));
-        const r = await Java.run('Judge', ['/str/input.json', OUT_DIR + 'result.json']);
+        // 시간 검사가 닿지 않는 코드(식 람다만 쓴 무한 스트림 등)는 JVM 이 끝나지 않아요. 넉넉히 기다린 뒤 멈춘 것으로 봐요.
+        const budget = cases.reduce((sum, c) => sum + c.limit, 0) + RUN_GRACE_MS;
+        const r = await Promise.race([
+          Java.run('Judge', ['/str/input.json', OUT_DIR + 'result.json']),
+          new Promise((resolve) => setTimeout(() => resolve(null), budget)),
+        ]);
+        if (!r) return { stuck: true };
         let parsed = null;
         try { parsed = JSON.parse(await Java.read(OUT_DIR + 'result.json')); } catch (e) { parsed = null; }
         if (!parsed || parsed.token !== token) return { crash: [r.error, (r.output || '').trim()].filter(Boolean).join('\n') || '채점 결과를 읽지 못했어요. 다시 시도해 주세요.' };
@@ -312,6 +319,14 @@ public class AlgoHost {
       state.javaReady = true;
     } catch (e) {
       result = { crash: e.message || String(e) };
+    }
+    if (result.stuck) {
+      // 멈춘 JVM 은 되살릴 수 없어서 새로고침할 때까지 실행 버튼을 잠가 둬요 (작성한 코드는 이미 저장돼 있어요)
+      setJavaStatus('⚠️ Java 가 멈췄어요 — 새로고침해 주세요', 'error');
+      renderResult(p, mode, { crash: `제한 시간을 한참 넘겨도 실행이 끝나지 않아서 멈춘 것으로 봤어요.\n`
+        + `시간 검사가 닿지 않는 곳(예: 식 람다만 쓴 무한 스트림)에서 무한 루프가 도는 것 같아요.\n\n`
+        + `작성한 코드는 저장돼 있어요. 페이지를 새로고침한 뒤 코드를 고쳐서 다시 실행해 주세요.` }, performance.now() - t0, false);
+      return;
     }
     setBusy(false);
     setJavaStatus(state.javaReady ? '☕ Java 17 준비 완료' : '⚠️ Java 를 준비하지 못했어요', state.javaReady ? 'ready' : 'error');

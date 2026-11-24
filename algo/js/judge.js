@@ -395,8 +395,14 @@ final class __J {
     const toks = lexJava(src);
     const lineOf = (t) => src.slice(0, t.s).split('\n').length;
     let depth = 0;
+    const seq = (k, ...vs) => vs.every((v, i) => toks[k + i] && toks[k + i].v === v);
     for (let k = 0; k < toks.length; k++) {
       const t = toks[k];
+      // JVM 을 끝내는 호출은 채점기(브라우저에서는 상주 컴파일러까지)를 같이 끝내요
+      if (seq(k, 'System', '.', 'exit') || seq(k, 'getRuntime', '(', ')', '.', 'exit') || seq(k, 'getRuntime', '(', ')', '.', 'halt')) {
+        return `⚠️ ${lineOf(t)}번째 줄: System.exit() / Runtime.halt() 는 채점기까지 끝내서 쓸 수 없어요.\n`
+          + 'solution 메서드에서 return 으로 답을 돌려주세요.';
+      }
       if (t.v === '{') depth++;
       else if (t.v === '}') depth--;
       else if (depth === 0 && t.type === 'id' && ['class', 'interface', 'enum', 'record'].includes(t.v)) {
@@ -413,7 +419,7 @@ final class __J {
   const CHECK = '__T.c()';
   const NOT_METHOD = new Set(['if', 'for', 'while', 'switch', 'catch', 'synchronized', 'try', 'return', 'new', 'throw', 'else', 'case', 'assert', 'super', 'this']);
 
-  /* 반복문·메서드·생성자 본문 시작에 `__T.c();` 를 끼워 넣는다. 본문이 { 로 시작하지 않는 반복문
+  /* 반복문·메서드·생성자·블록 람다 본문 시작에 `__T.c();` 를 끼워 넣는다. 본문이 { 로 시작하지 않는 반복문
    * (for (...) for (...) if ... 처럼) 은 조건에 `__T.c() && (...)` 를 넣는다. while (true) / for (;;) 의 조건은
    * 건드리지 않는다 — 조건이 상수가 아니게 되면 javac 가 "missing return statement" 를 내기 때문이에요.
    * 줄바꿈은 넣지 않아서 줄 번호는 원본과 같다. 돌려주는 inserts 로 컴파일 오류의 열 위치를 원본 기준으로 되돌린다. */
@@ -430,6 +436,11 @@ final class __J {
     };
     for (let k = 0; k < toks.length; k++) {
       const t = toks[k];
+      // 블록 람다 x -> { ... } 와 switch 의 case X -> { ... } (스트림·forEach 안의 반복도 잡히게)
+      if (t.v === '->' && toks[k + 1] && toks[k + 1].v === '{') {
+        ins.push({ at: toks[k + 1].e, text: ' ' + CHECK + ';' });
+        continue;
+      }
       if (t.type === 'id' && t.v === 'do' && toks[k + 1] && toks[k + 1].v === '{') {
         ins.push({ at: toks[k + 1].e, text: ' ' + CHECK + ';' });
         continue;
