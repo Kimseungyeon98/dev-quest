@@ -41,6 +41,7 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ solved: Array.from(state.solved), lastId: state.currentId, codes: state.codes }));
     } catch (e) { /* 저장 공간이 없어도 계속 진행 */ }
+    DevQuest.sync.changed('algo'); // 계정에도 저장
   }
   function markSolved(id) {
     if (state.solved.has(id)) return false;

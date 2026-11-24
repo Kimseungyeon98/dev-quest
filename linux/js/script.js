@@ -970,6 +970,7 @@
       currentIndex: game.currentIndex,
       completed: Array.from(game.completed),
     }));
+    DevQuest.sync.changed('linux'); // 계정에도 저장
   }
   function isUnlocked(i) {
     return i === 0 || game.completed.has(MISSIONS[i - 1].id);

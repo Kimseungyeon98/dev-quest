@@ -186,6 +186,7 @@
       solved: Array.from(state.solved),
       lastProblemId: state.currentProblemId,
     }));
+    DevQuest.sync.changed('sql'); // 계정에도 저장
   }
   function markSolved(id) {
     if (state.solved.has(id)) return;

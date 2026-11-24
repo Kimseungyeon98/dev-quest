@@ -90,17 +90,252 @@
     return { ok: res.ok, status: res.status, data };
   }
 
+  function loginUrl() {
+    const here = location.pathname + location.search;
+    return '/login/' + (here === '/' ? '' : '?next=' + encodeURIComponent(here));
+  }
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src; el.async = false;
+      el.onload = resolve; el.onerror = () => reject(new Error('스크립트를 불러오지 못했어요: ' + src));
+      document.head.appendChild(el);
+    });
+  }
+
+  /* ---------- 알림 (화면 아래 작은 안내) ---------- */
+  function notice(text, action) {
+    let box = document.getElementById('dq-notice');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'dq-notice'; box.className = 'dq-notice'; box.setAttribute('role', 'status');
+      document.body.appendChild(box);
+    }
+    box.innerHTML = `<span>${esc(text)}</span>` + (action ? `<button type="button">${esc(action.label)}</button>` : '') + '<button type="button" class="dq-x" aria-label="닫기">×</button>';
+    if (action) box.querySelector('button').addEventListener('click', action.run);
+    box.querySelector('.dq-x').addEventListener('click', () => box.classList.remove('show'));
+    box.classList.add('show');
+    clearTimeout(notice.timer);
+    if (!action) notice.timer = setTimeout(() => box.classList.remove('show'), 6000);
+  }
+
+  /* ---------- 진행도 동기화 ----------
+   * 과목 앱은 지금처럼 localStorage(과목의 storageKey)를 읽고 써요. 이 모듈이 그 값을 계정과 맞춰 줘요.
+   *  - 페이지를 열면: 서버 진행도를 localStorage 에 먼저 써 두고 과목 앱을 시작해요 (DevQuest.afterSync)
+   *  - 앱이 저장하면: DevQuest.sync.changed(과목) → 잠깐 모았다가 PUT /api/progress/{과목}
+   *  - 다른 기기에서 먼저 저장했으면(409): 두 기록을 합쳐서(merge) 다시 저장해요
+   *  - 아직 못 올린 기록(dirty)은 다음에 페이지를 열 때 올려요
+   *  - 로그인 기능 전에 이 브라우저에 쌓인 진행도는 첫 로그인 때 계정에 합쳐요
+   *  - 로그아웃하면 이 브라우저의 진행도를 지워서 다른 계정과 섞이지 않게 해요
+   * 백엔드 없이(파일·serve.js) 열면 예전처럼 이 브라우저에만 저장해요. */
+
+  /* 두 진행도 합치기: 목록은 합집합, 객체는 키별로, 나머지 값은 a(이 기기)를 따라요 */
+  function merge(a, b) {
+    if (a === undefined || a === null) return b === undefined ? null : b;
+    if (b === undefined || b === null) return a;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      const out = a.slice();
+      const seen = new Set(a.map((x) => JSON.stringify(x)));
+      b.forEach((x) => { const k = JSON.stringify(x); if (!seen.has(k)) { seen.add(k); out.push(x); } });
+      return out;
+    }
+    const isObj = (v) => typeof v === 'object' && !Array.isArray(v);
+    if (isObj(a) && isObj(b)) {
+      const out = Object.assign({}, b);
+      Object.keys(a).forEach((k) => { out[k] = merge(a[k], b[k]); });
+      return out;
+    }
+    return a;
+  }
+
+  const sync = (function () {
+    const META_KEY = 'devQuest:sync'; // { user, courses: { 과목: { version, dirty } } }
+    const PUSH_DELAY = 1200;
+    const RETRY_DELAY = 30000;
+    const KEEPALIVE_MAX = 60000; // 페이지를 떠날 때 보내는 요청(keepalive)의 본문 한도(64KB)보다 조금 작게
+    let mode = 'local';
+    let meta = null;
+    let readyPromise = null;
+    const timers = {}, chains = {}, mergeBase = {};
+
+    const courses = () => window.DEV_QUEST_COURSES || [];
+    const courseOf = (id) => courses().find((c) => c.id === id);
+    function readMeta() { try { return JSON.parse(localStorage.getItem(META_KEY)); } catch (e) { return null; } }
+    function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) { /* 무시 */ } }
+    function rawLocal(c) { try { return localStorage.getItem(c.storageKey); } catch (e) { return null; } }
+    function readLocal(c) { try { const raw = rawLocal(c); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+    function writeLocal(c, data) {
+      try { if (data == null) localStorage.removeItem(c.storageKey); else localStorage.setItem(c.storageKey, JSON.stringify(data)); } catch (e) { /* 무시 */ }
+    }
+    function entry(id) { return (meta.courses[id] = meta.courses[id] || { version: 0, dirty: false }); }
+
+    function setStatus(state, title) {
+      document.querySelectorAll('.dq-sync').forEach((el) => {
+        el.dataset.state = state;
+        el.textContent = { saved: '☁️', saving: '⏳', error: '⚠️' }[state] || '';
+        el.title = title || { saved: '진행도가 계정에 저장됐어요', saving: '진행도를 저장하는 중이에요', error: '진행도를 저장하지 못했어요' }[state] || '';
+      });
+    }
+
+    function ready() {
+      if (!readyPromise) readyPromise = init().catch((e) => { console.warn('진행도 동기화 실패', e); return mode; });
+      return readyPromise;
+    }
+
+    async function init() {
+      if (location.protocol === 'file:') return mode;
+      const me = await api('/api/me');
+      if (me.status === 401) { location.href = loginUrl(); return new Promise(() => {}); }
+      if (!me.ok || !me.data || !me.data.username) return mode; // 백엔드 없이 연 경우
+      const user = me.data.username;
+      const all = await api('/api/progress');
+      if (!all.ok) { notice('서버에서 진행도를 불러오지 못했어요. 이 브라우저에 있는 기록으로 시작해요.'); return mode; }
+      mode = 'server';
+
+      const prev = readMeta();
+      let migrated = false;
+      if (!prev) {
+        // 로그인 기능 전에 이 브라우저에 쌓인 진행도 → 처음 로그인한 계정에 합쳐요
+        meta = { user, courses: {} };
+        courses().forEach((c) => { if (readLocal(c)) { entry(c.id).dirty = true; migrated = true; } });
+      } else if (prev.user !== user) {
+        // 이 브라우저에 남은 다른 계정의 기록은 쓰지 않아요
+        meta = { user, courses: {} };
+      } else {
+        meta = { user, courses: prev.courses || {} };
+      }
+
+      const server = (all.data && all.data.courses) || {};
+      const toPush = [];
+      courses().forEach((c) => {
+        const s = server[c.id];
+        const e = entry(c.id);
+        const local = readLocal(c);
+        if (e.dirty && local) { // 아직 올리지 못한 이 기기의 기록
+          writeLocal(c, s ? merge(local, s.data) : local);
+          e.version = s ? s.version : 0;
+          toPush.push(c.id);
+        } else {
+          writeLocal(c, s ? s.data : null);
+          e.version = s ? s.version : 0;
+          e.dirty = false;
+        }
+      });
+      saveMeta();
+      toPush.forEach(push);
+      if (migrated) notice('이 브라우저에 있던 진행도를 계정에 합쳤어요. 이제 어디서 접속하든 이어서 할 수 있어요.');
+      window.addEventListener('pagehide', flushOnLeave);
+      setStatus('saved');
+      return mode;
+    }
+
+    /* 과목 앱이 진행도를 저장한 직후에 불러요 */
+    function changed(id) {
+      if (mode !== 'server' || !meta || !courseOf(id)) return;
+      entry(id).dirty = true;
+      saveMeta();
+      setStatus('saving');
+      clearTimeout(timers[id]);
+      timers[id] = setTimeout(() => push(id), PUSH_DELAY);
+    }
+
+    /* 과목별로 한 번에 하나씩 보내요 */
+    function push(id) {
+      clearTimeout(timers[id]); timers[id] = null;
+      chains[id] = (chains[id] || Promise.resolve()).then(() => pushNow(id, 0));
+      return chains[id];
+    }
+
+    async function pushNow(id, attempt) {
+      const c = courseOf(id);
+      const e = entry(id);
+      if (!e.dirty) return;
+      const rawBefore = rawLocal(c);
+      let data = readLocal(c) || {};
+      if (mergeBase[id]) data = merge(data, mergeBase[id]);
+      const r = await api('/api/progress/' + id, { method: 'PUT', body: { data, version: e.version } });
+      if (r.ok) {
+        e.version = r.data.version;
+        if (rawLocal(c) === rawBefore) e.dirty = false; // 보내는 동안 또 바뀌었으면 한 번 더 보내요
+        saveMeta();
+        if (e.dirty) changed(id); else if (!Object.values(timers).some(Boolean)) setStatus('saved');
+        return;
+      }
+      if (r.status === 409 && r.data && r.data.current && attempt < 3) {
+        // 다른 기기에서 먼저 저장했어요 → 합쳐서 다시 저장. 열려 있는 화면은 합친 기록을 모르니,
+        // 새로고침 전까지는 저장할 때마다 상대 기록을 같이 합쳐서 지워지지 않게 해요
+        const current = r.data.current;
+        mergeBase[id] = merge(current.data, mergeBase[id]);
+        writeLocal(c, merge(readLocal(c) || data, current.data));
+        e.version = current.version;
+        saveMeta();
+        notice('다른 기기에서 저장한 진행도를 합쳤어요.', { label: '새로고침', run: () => location.reload() });
+        return pushNow(id, attempt + 1);
+      }
+      if (r.status === 401) {
+        setStatus('error', '로그인이 만료돼서 저장하지 못했어요');
+        notice('로그인이 만료돼서 진행도를 저장하지 못했어요. 다시 로그인하면 이어서 저장해요.', { label: '다시 로그인', run: () => { location.href = loginUrl(); } });
+        return;
+      }
+      setStatus('error');
+      notice((r.data && r.data.error) || '진행도를 저장하지 못했어요. 잠시 후 다시 시도할게요.');
+      if (r.status !== 400 && r.status !== 404 && r.status !== 413) timers[id] = setTimeout(() => push(id), RETRY_DELAY);
+    }
+
+    /* 페이지를 떠날 때 아직 안 보낸 기록을 보내요 (실패해도 dirty 가 남아 다음에 열 때 올려요) */
+    function flushOnLeave() {
+      Object.keys(timers).forEach((id) => {
+        if (!timers[id]) return;
+        clearTimeout(timers[id]); timers[id] = null;
+        const e = entry(id);
+        let data = readLocal(courseOf(id)) || {};
+        if (mergeBase[id]) data = merge(data, mergeBase[id]);
+        const body = JSON.stringify({ data, version: e.version });
+        if (body.length > KEEPALIVE_MAX) return;
+        try {
+          fetch('/api/progress/' + id, {
+            method: 'PUT', keepalive: true, credentials: 'same-origin', body,
+            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': cookie('XSRF-TOKEN') || '' },
+          });
+        } catch (err) { /* 다음에 열 때 올려요 */ }
+      });
+    }
+
+    /* 로그아웃 전에: 남은 기록을 보내고, 이 브라우저의 진행도를 지워요 */
+    async function beforeLogout() {
+      if (mode !== 'server' || !meta) return;
+      const pending = Object.keys(meta.courses).filter((id) => meta.courses[id].dirty);
+      await Promise.all(pending.map(push));
+      courses().forEach((c) => writeLocal(c, null));
+      // 다음 로그인 때 "로그인 전 기록"으로 오해하지 않게, 기록이 비어 있다는 표시만 남겨요
+      try { localStorage.setItem(META_KEY, JSON.stringify({ user: null, courses: {} })); } catch (e) { /* 무시 */ }
+    }
+
+    return { ready, changed, beforeLogout, setStatus, mode: () => mode, merge };
+  })();
+
+  /* 진행도를 계정과 맞춘 뒤에 과목 앱 스크립트를 실행해요 */
+  function afterSync(srcs) {
+    return sync.ready().then(async () => {
+      for (const src of [].concat(srcs)) await loadScript(src);
+    });
+  }
+
   /* 로그인한 아이디와 로그아웃 버튼. 백엔드 없이 파일·serve.js 로 열면(/api/me 가 없으면) 아무것도 안 보여요 */
   async function mountAccount(host) {
     if (!host || location.protocol === 'file:') return;
     host.classList.add('dq-account');
     const r = await api('/api/me');
     if (!r.ok || !r.data || !r.data.username) return;
-    host.innerHTML = `<span class="dq-user" title="로그인한 아이디"><span aria-hidden="true">👤</span><span class="dq-uname"> ${esc(r.data.username)}</span></span>`
+    host.innerHTML = '<span class="dq-sync" aria-live="polite"></span>'
+      + `<span class="dq-user" title="로그인한 아이디"><span aria-hidden="true">👤</span><span class="dq-uname"> ${esc(r.data.username)}</span></span>`
       + '<button type="button" class="dq-logout">로그아웃</button>';
     host.querySelector('.dq-logout').addEventListener('click', logout);
+    if (sync.mode() === 'server') sync.setStatus('saved');
   }
   async function logout() {
+    await sync.beforeLogout();
     await api('/api/auth/logout', { method: 'POST' });
     location.href = '/login/';
   }
@@ -159,5 +394,5 @@
       + (cat.desc ? `<div class="dq-cat-desc">${esc(cat.desc)}</div>` : '') + bodyHtml + '</details>';
   }
 
-  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout };
+  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout, sync, afterSync, merge, notice };
 })();

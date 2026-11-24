@@ -51,6 +51,18 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 - 다른 기기에서 먼저 저장해서 version 이 다르면 `409` 와 함께 최신 기록을 `current` 로 돌려줘요. 프론트는 두 기록을 합쳐서 `current.version` 으로 다시 저장하면 돼요.
 - 과목은 `devquest.progress.courses`(linux, sql, git, algo)만 받고, 과목 하나는 최대 512KB 예요(`devquest.progress.max-bytes`).
 
+### 프론트 동기화 (`DevQuest.sync`)
+
+과목 앱은 예전처럼 `localStorage`(과목의 `storageKey`)를 읽고 쓰고, [`shared/dq.js`](shared/dq.js) 의 동기화 모듈이 그 값을 계정과 맞춰요.
+
+- 과목 페이지는 `DevQuest.afterSync('js/app.js')` 로 앱을 시작해요. 서버 진행도를 `localStorage` 에 먼저 써 둔 뒤에 앱이 돌아요.
+- 앱은 저장 직후 `DevQuest.sync.changed('과목')` 을 불러요. 1.2초 동안 모았다가 `PUT` 하고, 페이지를 바로 떠나면 `keepalive` 요청으로 보내요. 그래도 못 보낸 기록은 다음에 페이지를 열 때 올려요.
+- 다른 기기에서 먼저 저장했으면(409) 두 기록을 합쳐요: 목록은 합집합, 객체는 키별로, 나머지 값은 이 기기 값을 따라요. 화면 아래에 "합쳤어요" 안내와 새로고침 버튼이 떠요.
+- 로그인 기능 전에 이 브라우저에 쌓인 진행도는 **처음 로그인한 계정**에 합쳐요.
+- 로그아웃하면 남은 기록을 보내고 이 브라우저의 진행도를 지워요. 같은 브라우저에서 다른 계정으로 로그인해도 기록이 섞이지 않아요.
+- 상단 바의 ☁️ 는 저장 완료, ⏳ 는 저장 중, ⚠️ 는 저장 실패예요.
+- 백엔드 없이(파일·`serve.js`) 열면 예전처럼 이 브라우저에만 저장해요.
+
 ## Algorithm Quest 실행하기
 
 Algorithm Quest 는 브라우저 안의 JVM([CheerpJ](https://cheerpj.com/))으로 **진짜 Java 17** 코드를 컴파일하고 채점해요. CheerpJ 는 `file://` 주소에서 동작하지 않아서 웹 서버로 열어야 하고, 처음 열 때 Java 실행기를 내려받느라 인터넷 연결이 필요해요.
@@ -93,7 +105,8 @@ node algo/tools/serve.js
    <script src="../courses.js"></script>
    <script src="../shared/dq.js"></script>
    ```
-   앱 코드에서는 `const bar = DevQuest.mountBar('docker')` 로 바를 만들고, 진행이 바뀔 때마다 `bar.update(DevQuest.stats(items, doneIds))` 를 호출해요. (`items` 는 `[{id, difficulty}]`, `difficulty` 는 `'easy'|'medium'|'hard'` 또는 1~5)
+   앱 코드에서는 `const bar = DevQuest.mountBar('docker')` 로 바를 만들고, 진행이 바뀔 때마다 `bar.update(DevQuest.stats(items, doneIds))` 를 호출해요.
+   앱 스크립트는 `<script>DevQuest.afterSync('js/app.js');</script>` 로 불러오고, 진행도를 `localStorage` 에 저장한 직후 `DevQuest.sync.changed('docker')` 를 불러 주세요. (`items` 는 `[{id, difficulty}]`, `difficulty` 는 `'easy'|'medium'|'hard'` 또는 1~5)
 2. [`courses.js`](courses.js) 에 항목을 하나 추가해요. 백엔드가 서빙하도록 [`backend/build.gradle.kts`](backend/build.gradle.kts) 의 `siteIncludes` 에 폴더를, [`application.yml`](backend/src/main/resources/application.yml) 의 `devquest.progress.courses` 에 과목 id 를 추가해요. 이름·아이콘·소개는 여기서만 정하므로 허브와 과목 화면의 제목이 항상 같아요.
    - `storageKey` 와 `doneIds(saved)` : 앱이 저장한 진행 기록에서 완료한 퀘스트 id 를 꺼내는 방법
    - `scripts()` 와 `items()` : 허브가 데이터 파일만 불러와 퀘스트 목록을 직접 만드는 방법 (전체 문제 수를 손으로 적지 않아요)

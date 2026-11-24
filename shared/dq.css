@@ -78,3 +78,19 @@
   .dqbar .dq-account { padding-left: 8px; gap: 6px; }
   .dqbar .dq-account .dq-uname { display: none; }
 }
+.dq-account .dq-sync:empty { display: none; }
+.dq-account .dq-sync { font-size: 13px; cursor: default; }
+.dq-account .dq-sync[data-state="error"] { filter: drop-shadow(0 0 4px rgba(255,123,114,.6)); }
+/* 화면 아래 안내 (진행도 합침·저장 실패 등) */
+.dq-notice {
+  position: fixed; left: 50%; bottom: 20px; z-index: 1000; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100vw - 32px)); padding: 10px 12px 10px 16px;
+  background: #1f2630; color: #e6edf3; border: 1px solid #3a4452; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Pretendard", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
+  transition: opacity .2s, transform .2s;
+}
+.dq-notice.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.dq-notice button {
+  flex: none; font: inherit; font-weight: 700; color: #0d1117; background: #58a6ff; border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer;
+}
+.dq-notice button.dq-x { color: #8b949e; background: none; font-size: 18px; line-height: 1; padding: 0 4px; }

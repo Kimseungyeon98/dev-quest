@@ -98,7 +98,7 @@
 
   <section class="rules" id="rules"></section>
 
-  <footer>진행 기록은 이 브라우저에만 저장돼요. 과목별 진행은 각 과목 안에서 초기화할 수 있어요.</footer>
+  <footer>진행 기록은 계정에 저장돼서 어느 기기에서 접속하든 이어져요. 과목별 진행은 각 과목 안에서 초기화할 수 있어요.</footer>
 </div>
 
 <script src="courses.js"></script>
@@ -107,7 +107,8 @@
 (function () {
   'use strict';
   const DQ = window.DevQuest;
-  DQ.mountAccount(document.getElementById('account'));
+  // 계정 진행도를 받아 온 뒤 다시 그려요 (처음엔 이 브라우저의 기록으로 먼저 그려요)
+  DQ.sync.ready().then(() => { render(); DQ.mountAccount(document.getElementById('account')); });
   const courses = window.DEV_QUEST_COURSES;
   const ITEMS_KEY = 'devQuest:items';   // 마지막으로 읽은 퀘스트 목록 (다음 방문 때 먼저 보여 주기 위한 캐시)
   const esc = DQ.esc;

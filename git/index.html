@@ -110,6 +110,6 @@
 <script src="js/scenario-files.js"></script>
 <script>window.GIT_PLAYBOOK_SCENARIO_FILES.forEach(function (f) { document.write('<script src="js/' + f + '"><' + '/script>'); });</script>
 <script src="js/ui-render.js"></script>
-<script src="js/app.js"></script>
+<script>DevQuest.afterSync('js/app.js'); // 계정 진행도를 받은 뒤에 시작해요</script>
 </body>
 </html>

@@ -9,7 +9,7 @@
   /* ---------- 저장소(localStorage) ---------- */
   let store = { done: {}, seen: false };
   try { const raw = localStorage.getItem(STORE_KEY); if (raw) store = Object.assign(store, JSON.parse(raw)); } catch (e) { /* 무시 */ }
-  const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* 무시 */ } };
+  const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* 무시 */ } DevQuest.sync.changed('git'); };
 
   /* ---------- 상태 ---------- */
   let lab = null, sc = null;
