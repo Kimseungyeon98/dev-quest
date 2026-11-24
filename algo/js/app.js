@@ -284,6 +284,8 @@ public class AlgoHost {
     if (state.busy) return;
     const p = BY_ID[state.currentId];
     const src = editor.get();
+    const blocked = AJ.checkSource(src);
+    if (blocked) { renderResult(p, mode, { compileError: blocked }, 0, false); return; }
     setBusy(true);
     const t0 = performance.now();
     let result;

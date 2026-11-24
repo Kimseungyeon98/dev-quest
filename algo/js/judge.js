@@ -64,9 +64,9 @@
    * 시그니처 → 시작 코드 / Judge.java
    * ========================================================== */
   const CONV = {
-    int: 'J.i', long: 'J.l', double: 'J.d', boolean: 'J.z', char: 'J.c', String: 'J.s',
-    'int[]': 'J.i1', 'long[]': 'J.l1', 'double[]': 'J.d1', 'boolean[]': 'J.z1', 'char[]': 'J.c1', 'String[]': 'J.s1',
-    'int[][]': 'J.i2', 'long[][]': 'J.l2', 'char[][]': 'J.c2', 'String[][]': 'J.s2',
+    int: '__J.i', long: '__J.l', double: '__J.d', boolean: '__J.z', char: '__J.c', String: '__J.s',
+    'int[]': '__J.i1', 'long[]': '__J.l1', 'double[]': '__J.d1', 'boolean[]': '__J.z1', 'char[]': '__J.c1', 'String[]': '__J.s1',
+    'int[][]': '__J.i2', 'long[][]': '__J.l2', 'char[][]': '__J.c2', 'String[][]': '__J.s2',
   };
   function defaultValue(type) {
     if (type === 'boolean') return 'false';
@@ -95,7 +95,7 @@ class Solution {
    * 브라우저에서는 한 번만 컴파일해서 저장해 두고, 매번은 사용자 코드와 짧은 Judge.java 만 컴파일해요.
    * 내용을 고치면 JUDGE_LIB_VERSION 을 올려야 저장된 옛 .class 대신 새로 컴파일돼요.
    * String.raw 라서 역슬래시가 그대로 들어가요 (자바 코드 안에 ${ 를 쓰지 않도록 주의). */
-  const JUDGE_LIB_VERSION = 1;
+  const JUDGE_LIB_VERSION = 2;
   const JUDGE_LIB = String.raw`import java.io.*;
 import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
@@ -109,11 +109,11 @@ public final class JudgeCore {
     @SuppressWarnings("unchecked")
     public static void run(String[] args, Call call) throws Exception {
         String text = new String(Files.readAllBytes(Paths.get(args[0])), StandardCharsets.UTF_8);
-        Map<String, Object> input = (Map<String, Object>) new J(text).value();
+        Map<String, Object> input = (Map<String, Object>) new __J(text).value();
         List<Object> cases = (List<Object>) input.get("cases");
         PrintStream orig = System.out;
         StringBuilder sb = new StringBuilder("{\"token\":");
-        J.str(sb, (String) input.get("token"));
+        __J.str(sb, (String) input.get("token"));
         sb.append(",\"results\":[");
         int timeouts = 0;
         for (int t = 0; t < cases.size(); t++) {
@@ -133,7 +133,7 @@ public final class JudgeCore {
             try {
                 Object r = call.call(a);
                 __T.disarm();
-                val = J.json(r);
+                val = __J.json(r);
             } catch (__T.Timeout e) {
                 st = "timeout";
             } catch (StackOverflowError e) {
@@ -151,8 +151,8 @@ public final class JudgeCore {
             String out = new String(buf.toByteArray(), StandardCharsets.UTF_8);
             if (out.length() > 4000) out = out.substring(0, 4000) + "\n... (출력이 너무 길어서 잘랐어요)";
             sb.append("{\"s\":\"").append(st).append("\",\"v\":").append(val).append(",\"ms\":").append(Math.round(ms * 100) / 100.0);
-            sb.append(",\"out\":"); J.str(sb, out);
-            sb.append(",\"err\":"); if (err == null) sb.append("null"); else J.str(sb, err);
+            sb.append(",\"out\":"); __J.str(sb, out);
+            sb.append(",\"err\":"); if (err == null) sb.append("null"); else __J.str(sb, err);
             sb.append('}');
         }
         sb.append("]}");
@@ -184,10 +184,10 @@ final class __T {
 }
 
 /* 아주 작은 JSON 읽기/쓰기 + 매개변수 타입 변환 */
-final class J {
+final class __J {
     private final String s;
     private int p;
-    J(String s) { this.s = s; }
+    __J(String s) { this.s = s; }
 
     Object value() {
         ws();
@@ -387,6 +387,29 @@ final class J {
     return toks;
   }
 
+  /* 채점용 코드가 쓰는 최상위 클래스 이름. 사용자가 같은 이름의 클래스를 만들면 "duplicate class" 로 컴파일이 깨져요 */
+  const RESERVED_CLASSES = ['Judge', 'JudgeCore', '__J', '__T'];
+
+  /* 컴파일 전에 걸러 낼 코드 문제. 문제가 있으면 안내 문구, 없으면 null */
+  function checkSource(src) {
+    const toks = lexJava(src);
+    const lineOf = (t) => src.slice(0, t.s).split('\n').length;
+    let depth = 0;
+    for (let k = 0; k < toks.length; k++) {
+      const t = toks[k];
+      if (t.v === '{') depth++;
+      else if (t.v === '}') depth--;
+      else if (depth === 0 && t.type === 'id' && ['class', 'interface', 'enum', 'record'].includes(t.v)) {
+        const name = toks[k + 1];
+        if (name && name.type === 'id' && RESERVED_CLASSES.includes(name.v)) {
+          return `⚠️ ${lineOf(t)}번째 줄: 클래스 이름 ${name.v} 는 채점용 코드가 쓰고 있어서 쓸 수 없어요.\n`
+            + `다른 이름으로 바꿔 주세요. (쓸 수 없는 이름: ${RESERVED_CLASSES.join(', ')})`;
+        }
+      }
+    }
+    return null;
+  }
+
   const CHECK = '__T.c()';
   const NOT_METHOD = new Set(['if', 'for', 'while', 'switch', 'catch', 'synchronized', 'try', 'return', 'new', 'throw', 'else', 'case', 'assert', 'super', 'this']);
 
@@ -513,6 +536,6 @@ final class J {
 
   root.AlgoJudge = {
     makeRand, buildCases, sameValue, formatValue, starterCode, judgeSource, judgeInput, grade,
-    instrument, cleanCompilerOutput, lexJava, DEFAULT_LIMIT_MS, JUDGE_LIB, JUDGE_LIB_VERSION,
+    instrument, checkSource, cleanCompilerOutput, lexJava, DEFAULT_LIMIT_MS, JUDGE_LIB, JUDGE_LIB_VERSION,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

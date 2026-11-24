@@ -52,6 +52,8 @@ for (const p of PROBLEMS) {
     if (!AJ.sameValue(got, e.expected)) errs.push(`예제 ${i + 1}: ref = ${AJ.formatValue(got)}, expected = ${AJ.formatValue(e.expected)}`);
   });
   let timing = '';
+  const blocked = AJ.checkSource(p.solution);
+  if (blocked) errs.push('모범 답안이 사전 검사에 걸림: ' + blocked);
   try {
     const cases = AJ.buildCases(p, 'submit');
     const r = compileAndRun(path.join(tmp, p.id), p, p.solution, cases);
