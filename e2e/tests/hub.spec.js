@@ -50,6 +50,30 @@ test('랭킹 미니 목록과 전체 랭킹 펼치기', async ({ page }) => {
   await expect(page.locator('#ranking')).toBeHidden();
 });
 
+test('랭킹을 누적 · 이번 주로 바꿔 볼 수 있고, 고른 기간을 기억해요', async ({ page }) => {
+  await signup(page, uniqueName('hb'));
+  await api(page, '/api/progress/sql', { method: 'PUT', body: { data: { solved: questIds('sql').slice(0, 2) }, version: 0 } });
+  await page.reload();
+  const seg = (where, p) => page.locator(`${where} [data-seg] button[data-period="${p}"]`);
+  await expect(seg('#rankMini', 'all')).toHaveAttribute('aria-pressed', 'true');
+
+  await seg('#rankMini', 'week').click();
+  await expect(page.locator('#rankMini h2 small')).toContainText('이번 주');
+  await expect(page.locator('#rankMini li.me .xp')).toHaveText('200 XP'); // 방금 깬 쉬움 2개
+  await page.click('#openRanking');
+  await expect(seg('#ranking', 'week')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#rankingBody thead th')).toHaveText(['순위', '닉네임', 'XP', '완료']);
+  await expect(page.locator('#rankingBody tr.me')).toContainText('2개');
+  await expect(page.locator('#rankingNote')).toContainText('(월)부터');
+
+  await page.reload(); // 기억해요
+  await expect(seg('#rankMini', 'week')).toHaveAttribute('aria-pressed', 'true');
+  await page.click('#openRanking');
+  await seg('#ranking', 'all').click();
+  await expect(seg('#rankMini', 'all')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#rankingBody thead th')).toHaveCount(6);
+});
+
 test('휴대폰 폭에서도 가로 스크롤이 없어요', async ({ page }) => {
   await signup(page, uniqueName('hb'));
   await page.setViewportSize({ width: 390, height: 844 });

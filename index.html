@@ -138,7 +138,7 @@
   .ranking { padding: 24px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); scroll-margin-top: 16px; }
   .ranking-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .ranking-head h2 { margin: 0; font-size: 20px; color: var(--strong); }
-  .ranking-head small { color: var(--muted); font-size: 12px; }
+  .rk-note { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
   .rk-tabs { display: flex; gap: 6px; margin: 14px 0 12px; overflow-x: auto; padding-bottom: 2px; }
   .rk-tabs button { flex: none; min-height: 36px; font: inherit; font-size: 13px; font-weight: 600; padding: 0 14px; border-radius: 99px; cursor: pointer; color: var(--muted); background: transparent; border: 1px solid #2a313c; white-space: nowrap; }
   .rk-tabs button[aria-selected="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
@@ -153,8 +153,16 @@
   .rk-table .who { font-weight: 600; color: var(--strong); word-break: break-all; }
   .rk-table .tier { white-space: nowrap; font-weight: 700; font-size: 13px; }
   .rk-table tr.me td { background: rgba(88,166,255,.10); }
+  .rk-table td:last-child, .rk-table th:last-child { padding-right: 14px; }
   .rk-table tr.gap td { text-align: center; color: var(--muted); padding: 2px; font-size: 12px; }
   .rk-foot { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+  /* 누적 · 이번 주 전환 */
+  .seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 99px; border: 1px solid var(--line-strong); flex: none; }
+  .seg button { font: inherit; font-size: 12px; font-weight: 700; min-height: 28px; padding: 0 12px; border-radius: 99px; border: 0; cursor: pointer; color: var(--muted); background: transparent; white-space: nowrap; }
+  .seg button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); }
+  .seg button:focus-visible { outline: 2px solid var(--strong); outline-offset: 2px; }
+  .rank-mini .sec-head { flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  .rank-mini .sec-head h2 { margin-right: auto; }
 
   footer { font-size: 13px; color: var(--muted); }
 
@@ -223,8 +231,9 @@
   <section class="ranking" id="ranking" aria-labelledby="rankingTitle" hidden>
     <div class="ranking-head">
       <h2 id="rankingTitle">전체 랭킹</h2>
-      <small>XP 가 같으면 먼저 도달한 사람이 위예요</small>
+      <div class="seg" data-seg role="group" aria-label="랭킹 기간"></div>
     </div>
+    <small class="rk-note" id="rankingNote">XP 가 같으면 먼저 도달한 사람이 위예요</small>
     <div class="rk-tabs" id="rankingTabs" role="tablist" aria-label="랭킹 종류"></div>
     <div id="rankingBody" role="tabpanel" aria-live="polite"></div>
   </section>
@@ -417,15 +426,51 @@
   function posHtml(rank) {
     return `<span class="pos${rank <= 3 ? ' pos-' + rank : ''}" aria-label="${rank}위">${rank}</span>`;
   }
+  /* 기간: all(누적) · week(이번 주, 월요일 0시부터 새로 끝낸 퀘스트) */
+  const PERIOD_KEY = 'devQuest:rankingPeriod';
+  let rankingPeriod = 'all';
+  try { if (localStorage.getItem(PERIOD_KEY) === 'week') rankingPeriod = 'week'; } catch (e) { /* 무시 */ }
+  const PERIODS = [{ id: 'all', label: '누적' }, { id: 'week', label: '이번 주' }];
+  function paintSegs() {
+    document.querySelectorAll('[data-seg]').forEach((g) => {
+      if (!g.children.length) g.innerHTML = PERIODS.map((x) => `<button type="button" data-period="${x.id}">${x.label}</button>`).join('');
+      g.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === rankingPeriod)));
+    });
+  }
+  function setPeriod(p) {
+    if (p === rankingPeriod) return;
+    rankingPeriod = p;
+    try { localStorage.setItem(PERIOD_KEY, p); } catch (e) { /* 무시 */ }
+    paintSegs();
+    renderRankMini();
+    if (rankingReady) loadRanking();
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-seg] button[data-period]');
+    if (b) setPeriod(b.dataset.period);
+  });
+  const EMPTY = {
+    all: '아직 랭킹에 오른 사람이 없어요. 첫 퀘스트를 깨면 1등이에요!',
+    week: '이번 주에 퀘스트를 깬 사람이 아직 없어요. 지금 깨면 이번 주 1등이에요!'
+  };
+  function weekLabel(data) {
+    if (!data.weekStart) return '';
+    const [, m, d] = data.weekStart.split('-').map(Number);
+    return `${m}월 ${d}일(월)부터`;
+  }
+
+  let miniSeq = 0;
   async function renderRankMini() {
     const el = document.getElementById('rankMini');
     el.hidden = false;
-    const [r, me] = await Promise.all([DQ.api('/api/ranking?course=all&limit=5'), DQ.getMe()]);
+    const period = rankingPeriod, seq = ++miniSeq;
+    const [r, me] = await Promise.all([DQ.api('/api/ranking?course=all&period=' + period + '&limit=5'), DQ.getMe()]);
+    if (seq !== miniSeq) return; // 그 사이 기간을 바꿨어요
     if (!r.ok) { el.innerHTML = `<h2 id="rankMiniTitle">랭킹</h2><p class="empty">${esc((r.data && r.data.error) || '랭킹을 불러오지 못했어요.')}</p>`; return; }
     const data = r.data;
     const row = (e) => `<li${e.me ? ' class="me"' : ''}>${posHtml(e.rank)}<span class="who">${esc(e.nickname)}${e.me ? '<span class="me-badge">나</span>' : ''}</span><span class="xp">${e.xp.toLocaleString()} XP</span></li>`;
     let list;
-    if (!data.entries.length) list = '<p class="empty">아직 랭킹에 오른 사람이 없어요. 첫 퀘스트를 깨면 1등이에요!</p>';
+    if (!data.entries.length) list = `<p class="empty">${EMPTY[period]}</p>`;
     else {
       // 내가 상위 5명 안이면 그 줄을 강조하고, 밖이면 맨 아래에 내 줄을 따로 붙여요
       const meListed = data.entries.some((e) => e.me);
@@ -434,9 +479,12 @@
     }
     const nudge = me.ok && me.data && me.data.defaultNickname
       ? `<p class="nudge">랭킹에는 닉네임이 보여요. 지금은 기본 닉네임 <b>${esc(me.data.nickname)}</b> 이에요. <button type="button" class="linkbtn" id="nickBtn">닉네임 정하기</button></p>` : '';
-    el.innerHTML = `<div class="sec-head" style="margin:0"><h2 id="rankMiniTitle">랭킹 <small>· 전체 ${data.players.toLocaleString()}명</small></h2>
+    const sub = period === 'week' ? `이번 주 ${data.players.toLocaleString()}명` : `전체 ${data.players.toLocaleString()}명`;
+    el.innerHTML = `<div class="sec-head" style="margin:0"><h2 id="rankMiniTitle">랭킹 <small>· ${sub}</small></h2>
+        <div class="seg" data-seg role="group" aria-label="랭킹 기간"></div>
         <button type="button" class="linkbtn" id="openRanking" aria-controls="ranking" aria-expanded="${!document.getElementById('ranking').hidden}">전체 랭킹 보기 →</button></div>
       ${list}${nudge}`;
+    paintSegs();
     el.querySelector('#openRanking').addEventListener('click', toggleRanking);
     const nb = el.querySelector('#nickBtn');
     if (nb) nb.addEventListener('click', () => DQ.openNicknameDialog());
@@ -458,6 +506,7 @@
   }
   function initRanking() {
     rankingReady = true;
+    paintSegs();
     try { const t = localStorage.getItem(TAB_KEY); if (t && rankingTabs().some((x) => x.id === t)) rankingTab = t; } catch (e) { /* 무시 */ }
     const tabs = document.getElementById('rankingTabs');
     tabs.innerHTML = rankingTabs().map((t) => `<button type="button" role="tab" data-tab="${esc(t.id)}">${esc(t.label)}</button>`).join('');
@@ -478,17 +527,24 @@
     loadRanking();
   }
   async function loadRanking() {
-    const id = rankingTab;
+    const id = rankingTab, period = rankingPeriod, key = period + ':' + id;
+    const current = () => rankingTab === id && rankingPeriod === period;
     const body = document.getElementById('rankingBody');
-    if (!rankingCache[id]) {
+    if (!rankingCache[key]) {
       body.innerHTML = '<p class="empty">랭킹을 불러오는 중…</p>';
-      const r = await DQ.api('/api/ranking?course=' + encodeURIComponent(id) + '&limit=50');
-      if (!r.ok) { if (rankingTab === id) body.innerHTML = `<p class="empty">${esc((r.data && r.data.error) || '랭킹을 불러오지 못했어요.')}</p>`; return; }
-      rankingCache[id] = r.data;
+      const r = await DQ.api('/api/ranking?course=' + encodeURIComponent(id) + '&period=' + period + '&limit=50');
+      if (!r.ok) { if (current()) body.innerHTML = `<p class="empty">${esc((r.data && r.data.error) || '랭킹을 불러오지 못했어요.')}</p>`; return; }
+      rankingCache[key] = r.data;
     }
-    if (rankingTab === id) renderRanking(rankingCache[id]);
+    if (current()) renderRanking(rankingCache[key]);
   }
   function rowHtml(e, data) {
+    if (data.period === 'week') {
+      return `<tr${e.me ? ' class="me"' : ''}><td class="rank">${posHtml(e.rank)}</td>`
+        + `<td class="who">${esc(e.nickname)}${e.me ? '<span class="me-badge">나</span>' : ''}</td>`
+        + `<td class="num">+${e.xp.toLocaleString()}</td>`
+        + `<td class="num">${e.done}개</td></tr>`;
+    }
     const t = DQ.tierFor(data.maxXp ? e.xp / data.maxXp : 0).tier;
     return `<tr${e.me ? ' class="me"' : ''}><td class="rank">${posHtml(e.rank)}</td>`
       + `<td class="who">${esc(e.nickname)}${e.me ? '<span class="me-badge">나</span>' : ''}</td>`
@@ -499,11 +555,21 @@
   }
   function renderRanking(data) {
     const body = document.getElementById('rankingBody');
-    if (!data.entries.length) { body.innerHTML = '<p class="empty">아직 랭킹에 오른 사람이 없어요. 첫 퀘스트를 깨면 1등이에요!</p>'; return; }
+    const week = data.period === 'week';
+    document.getElementById('rankingNote').textContent = week
+      ? `이번 주 ${weekLabel(data)} 새로 끝낸 퀘스트의 XP 예요 (한국 시간). XP 가 같으면 먼저 도달한 사람이 위예요`
+      : 'XP 가 같으면 먼저 도달한 사람이 위예요';
+    if (!data.entries.length) { body.innerHTML = `<p class="empty">${EMPTY[week ? 'week' : 'all']}</p>`; return; }
+    const cols = week ? 4 : 6;
     let rows = data.entries.map((e) => rowHtml(e, data)).join('');
-    if (data.me && !data.entries.some((e) => e.me)) rows += '<tr class="gap"><td colspan="6">⋯</td></tr>' + rowHtml(data.me, data);
-    body.innerHTML = `<div class="rk-list"><table class="rk-table"><thead><tr><th>순위</th><th>닉네임</th><th>티어</th><th class="num lv">레벨</th><th class="num">XP</th><th class="num done">완료</th></tr></thead><tbody>${rows}</tbody></table></div>`
-      + `<p class="rk-foot">${data.players.toLocaleString()}명 참여 · ${data.me ? `내 순위 <b>${data.me.rank}위</b>` : '아직 내 순위가 없어요 — 퀘스트를 깨면 올라가요'}</p>`;
+    if (data.me && !data.entries.some((e) => e.me)) rows += `<tr class="gap"><td colspan="${cols}">⋯</td></tr>` + rowHtml(data.me, data);
+    const head = week
+      ? '<th>순위</th><th>닉네임</th><th class="num">XP</th><th class="num">완료</th>'
+      : '<th>순위</th><th>닉네임</th><th>티어</th><th class="num lv">레벨</th><th class="num">XP</th><th class="num done">완료</th>';
+    const mine = data.me ? `내 순위 <b>${data.me.rank}위</b>`
+      : (week ? '이번 주엔 아직 내 순위가 없어요 — 퀘스트를 깨면 올라가요' : '아직 내 순위가 없어요 — 퀘스트를 깨면 올라가요');
+    body.innerHTML = `<div class="rk-list"><table class="rk-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`
+      + `<p class="rk-foot">${week ? '이번 주 ' : ''}${data.players.toLocaleString()}명 참여 · ${mine}</p>`;
   }
 
   /* ---------- 시작 ---------- */

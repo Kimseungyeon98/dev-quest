@@ -213,6 +213,37 @@ class RankingApiTest {
     }
 
     @Test
+    void 주간_랭킹은_이번_주에_새로_끝낸_퀘스트만() throws Exception {
+        Player p = player();
+        long id = jdbc.queryForObject("select id from users where username = ?", Long.class, p.username());
+        java.time.ZoneId seoul = java.time.ZoneId.of("Asia/Seoul");
+        java.time.LocalDate monday = java.time.LocalDate.now(seoul)
+                .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+        java.sql.Timestamp now = java.sql.Timestamp.from(java.time.Instant.now());
+        java.sql.Timestamp lastWeek = java.sql.Timestamp.from(monday.minusDays(1).atTime(23, 0).atZone(seoul).toInstant());
+        String insert = "insert into quest_completions (user_id, course_id, quest_id, xp, completed_at, live) values (?, ?, ?, ?, ?, ?)";
+        jdbc.update(insert, id, "sql", "w1", 150, now, true);
+        jdbc.update(insert, id, "git", "w2", 100, now, true);
+        jdbc.update(insert, id, "sql", "w3", 999, lastWeek, true); // 지난주
+        jdbc.update(insert, id, "sql", "w4", 777, now, false); // 시각을 추정한 예전 기록
+
+        JsonNode all = read(p.web().get("/api/ranking?course=all&period=week&limit=100"));
+        assertThat(all.get("period").asString()).isEqualTo("week");
+        assertThat(all.get("weekStart").asString()).isEqualTo(monday.toString());
+        assertThat(all.get("me").get("xp").asInt()).isEqualTo(250);
+        assertThat(all.get("me").get("done").asInt()).isEqualTo(2);
+        assertThat(read(p.web().get("/api/ranking?course=sql&period=week")).get("me").get("xp").asInt()).isEqualTo(150);
+        assertThat(read(p.web().get("/api/ranking?course=git&period=week")).get("me").get("xp").asInt()).isEqualTo(100);
+        assertThat(read(p.web().get("/api/ranking?course=linux&period=week")).get("me").isNull()).isTrue();
+
+        JsonNode total = ranking(p, "all");
+        assertThat(total.get("period").asString()).isEqualTo("all");
+        assertThat(total.get("weekStart").isNull()).isTrue();
+        assertThat(total.get("me").isNull()).as("누적 점수는 진행도(course_scores)로 계산").isTrue();
+        assertThat(p.web().get("/api/ranking?period=month").statusCode()).isEqualTo(400);
+    }
+
+    @Test
     void 잘못된_요청() throws Exception {
         Player p = player();
         assertThat(p.web().get("/api/ranking?course=docker").statusCode()).isEqualTo(404);

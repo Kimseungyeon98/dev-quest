@@ -76,9 +76,10 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 ### 랭킹과 닉네임
 
 - 허브의 **랭킹** 카드에 전체 상위 5명과 내 순위가 보이고, [전체 랭킹 보기]를 누르면 전체·과목별 탭과 상위 50명 표가 펼쳐져요. XP 가 높은 순이고, 같으면 그 XP 에 먼저 도달한 사람이 위예요.
+- **누적 · 이번 주** 전환: 이번 주 랭킹은 이번 주 월요일 0시(한국 시간, `DEVQUEST_TIMEZONE`)부터 새로 끝낸 퀘스트의 XP 만 더해요 (전체·과목별 모두). 매주 월요일에 새로 시작해서 늦게 시작한 사람도 1등을 노릴 수 있어요. 고른 기간은 브라우저에 기억해요.
 - XP 는 서버가 계산해요. 진행도를 저장할 때 퀘스트 카탈로그로 완료한 퀘스트의 난이도 XP 를 더해 `course_scores` 에 저장하고, 카탈로그에 없는 퀘스트 id 는 세지 않아요(최대 XP 를 넘을 수 없어요). 서버를 켤 때 모든 진행도로 점수를 다시 계산해서, 퀘스트를 추가·삭제해도 맞춰져요.
 - 랭킹에는 **닉네임**만 보이고 로그인 아이디는 보이지 않아요. 가입하면 `모험가1234` 같은 기본 닉네임이 붙고, 상단 바나 허브의 닉네임을 눌러 바꿀 수 있어요 (한글·영문·숫자·_ 2~12자, 대소문자 구분 없이 하나만).
-- API: `GET /api/ranking?course=all|linux|sql|git|algo&limit=50` · `PUT /api/me/nickname` `{ nickname }` · `GET /api/me` → `{ username, nickname, defaultNickname }`
+- API: `GET /api/ranking?course=all|linux|sql|git|algo&period=all|week&limit=50` (응답의 `weekStart` = 이번 주 월요일) · `PUT /api/me/nickname` `{ nickname }` · `GET /api/me` → `{ username, nickname, defaultNickname }`
 
 ### 완료 기록 · 연속 학습일
 
