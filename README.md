@@ -80,6 +80,13 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 - 랭킹에는 **닉네임**만 보이고 로그인 아이디는 보이지 않아요. 가입하면 `모험가1234` 같은 기본 닉네임이 붙고, 상단 바나 허브의 닉네임을 눌러 바꿀 수 있어요 (한글·영문·숫자·_ 2~12자, 대소문자 구분 없이 하나만).
 - API: `GET /api/ranking?course=all|linux|sql|git|algo&limit=50` · `PUT /api/me/nickname` `{ nickname }` · `GET /api/me` → `{ username, nickname, defaultNickname }`
 
+### 완료 기록 · 연속 학습일
+
+- 진행도를 저장할 때 서버가 이전 기록과 비교해 **새로 끝낸 퀘스트를 완료 시각과 함께** `quest_completions` 에 남기고, 초기화로 빠진 퀘스트는 지워요 (과목 앱은 그대로).
+- 이 기능 전에 끝낸 퀘스트는 시각을 추정해서(Git 은 앱이 저장한 시각, 나머지는 진행도 저장 시각) `live = false` 로 채워요. 연속 학습일·주간 랭킹에서는 빠져요.
+- 허브의 **내 상태**에 연속 학습일(오늘 아직이면 어제까지 이어진 날 수, 최고 기록), 이번 주 월~일 7칸, 이번 주 XP 가 보여요. 하루·한 주는 `devquest.timezone`(기본 `Asia/Seoul`) 기준이고, 한 주는 월요일부터예요.
+- API: `GET /api/me/activity` → `{ streak, bestStreak, activeToday, totalDays, today, week: { start, xp, done, days: [{ date, done, xp }] } }`
+
 ### 퀘스트 카탈로그 (`shared/quests.json`)
 
 서버가 XP 를 계산할 수 있도록 과목별 퀘스트 id·난이도와 XP 규칙을 담은 자동 생성 파일이에요. 허브와 같은 방법(`courses.js` 의 `scripts` → `items`)으로 만들고, XP 규칙은 `shared/dq.js` 에서 가져와요. **퀘스트를 추가·수정·삭제하면 다시 만들어 커밋해 주세요.** CI 가 최신인지 확인해요.

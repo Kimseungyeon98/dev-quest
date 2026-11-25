@@ -72,6 +72,28 @@
   .stats dd { margin: 2px 0 0; font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--strong); }
   .stats dd small { font-size: 13px; color: var(--muted); }
 
+  .status-main { display: flex; flex-direction: column; gap: 16px; }
+  /* 연속 학습일 · 이번 주 */
+  .activity { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .act-head { display: flex; align-items: center; gap: 10px; }
+  .flame { width: 32px; height: 32px; flex: none; border-radius: 9px; display: grid; place-items: center; color: var(--muted); background: var(--surface); }
+  .flame.on { color: #ffa657; background: rgba(255,166,87,.14); }
+  .act-head b { font-family: var(--mono); font-size: 18px; color: var(--strong); }
+  .act-head small { margin-left: 6px; font-size: 12px; color: var(--muted); }
+  .act-tip { margin: 0; font-size: 13px; color: var(--muted); }
+  .act-tip b { color: #ffa657; }
+  .week { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .week li { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+  .week .cell { width: 100%; max-width: 30px; aspect-ratio: 1; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); }
+  .week .lv1 .cell { background: rgba(88,166,255,.35); border-color: transparent; }
+  .week .lv2 .cell { background: rgba(88,166,255,.65); border-color: transparent; }
+  .week .lv3 .cell { background: var(--accent); border-color: transparent; }
+  .week .today .cell { outline: 2px solid var(--strong); outline-offset: 1px; }
+  .week .today { color: var(--strong); font-weight: 700; }
+  .week .future .cell { opacity: .45; }
+  .week-sum { margin: 0; font-size: 13px; }
+  .week-sum b { font-family: var(--mono); color: var(--strong); }
+
   /* 과목 */
   .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .sec-head h2 { margin: 0; font-size: 20px; color: var(--strong); }
@@ -180,7 +202,8 @@
       <p class="hero-title skeleton">퀘스트를 불러오는 중…</p>
     </article>
     <aside class="status" id="status" aria-labelledby="statusTitle">
-      <h2 id="statusTitle">내 상태</h2>
+      <div class="status-main" id="statusMain"><h2 id="statusTitle">내 상태</h2></div>
+      <div class="activity" id="activity" hidden></div>
     </aside>
   </section>
 
@@ -299,9 +322,9 @@
   }
 
   function renderStatus(all, known) {
-    const el = document.getElementById('status');
+    const el = document.getElementById('statusMain');
     const pill = document.getElementById('statusPill');
-    el.style.setProperty('--tier', all.tier.color);
+    document.getElementById('status').style.setProperty('--tier', all.tier.color);
     pill.style.setProperty('--tier', all.tier.color);
     pill.innerHTML = `<span class="dot" aria-hidden="true"></span><b>${esc(all.tier.name)}</b><span class="mono">Lv.${all.level.level} · ${all.xp.toLocaleString()} XP</span>`;
     let next = '<p class="next-line"><span>최고 티어에 도달했어요</span></p><div class="bar"><i style="width:100%;--fill:var(--tier);background:var(--tier)"></i></div>';
@@ -358,6 +381,36 @@
     renderHero(statsById);
     renderStatus(DQ.stats(allItems, allDone), known);
     renderCourses(statsById);
+  }
+
+  /* ---------- 연속 학습일 · 이번 주 (백엔드로 열었을 때만) ---------- */
+  const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+  async function renderActivity() {
+    const el = document.getElementById('activity');
+    const r = await DQ.api('/api/me/activity');
+    if (!r.ok || !r.data) return;
+    const a = r.data;
+    const level = (n) => (n >= 4 ? 3 : n >= 2 ? 2 : n >= 1 ? 1 : 0);
+    const cells = a.week.days.map((d) => {
+      const date = new Date(d.date + 'T00:00:00');
+      const name = DAY_NAMES[date.getDay()];
+      const label = `${date.getMonth() + 1}월 ${date.getDate()}일 (${name}) · ${d.done ? `${d.done}개 완료 · +${d.xp} XP` : '기록 없음'}`;
+      const cls = [`lv${level(d.done)}`, d.date === a.today ? 'today' : '', d.date > a.today ? 'future' : ''].filter(Boolean).join(' ');
+      return `<li class="${cls}" title="${esc(label)}"><span class="cell" role="img" aria-label="${esc(label)}"></span><span aria-hidden="true">${name}</span></li>`;
+    }).join('');
+    let tip;
+    if (a.activeToday) tip = '오늘도 해냈어요. 내일도 이어 가요!';
+    else if (a.streak > 0) tip = `오늘 하나 깨면 <b>${a.streak + 1}일 연속</b>!`;
+    else tip = '오늘 퀘스트를 하나 깨면 연속 학습이 시작돼요.';
+    el.innerHTML = `
+      <div class="act-head">
+        <span class="flame${a.activeToday ? ' on' : ''}">${DQ.icon('flame', 18)}</span>
+        <div><b>${a.streak}일</b> 연속 학습${a.bestStreak > a.streak ? `<small>최고 ${a.bestStreak}일</small>` : ''}</div>
+      </div>
+      <p class="act-tip">${tip}</p>
+      <ol class="week" aria-label="이번 주 기록 (월~일)">${cells}</ol>
+      <p class="week-sum">이번 주 <b>+${a.week.xp.toLocaleString()} XP</b> · ${a.week.done}개 완료</p>`;
+    el.hidden = false;
   }
 
   /* ---------- 랭킹 미니 (상위 5명 + 나) ---------- */
@@ -462,6 +515,7 @@
     DQ.mountAccount(document.getElementById('account'));
     if (serverMode) {
       renderRankMini();
+      renderActivity();
       // 닉네임을 바꾸면 랭킹을 새로 받아요
       window.addEventListener('dq:me', () => {
         Object.keys(rankingCache).forEach((k) => delete rankingCache[k]);

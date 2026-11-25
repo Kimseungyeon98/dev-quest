@@ -64,6 +64,8 @@ management:
         enabled: true
 
 devquest:
+  # 하루·한 주를 나누는 기준 시간대 (연속 학습일·이번 주 기록·주간 랭킹). 한 주는 월요일부터
+  timezone: ${DEVQUEST_TIMEZONE:Asia/Seoul}
   # 관리자 API(임시 비밀번호 발급)를 켜는 토큰. 24자 이상이어야 켜져요. 비워 두면 꺼져요
   admin-token: ${ADMIN_TOKEN:}
   remember-me:

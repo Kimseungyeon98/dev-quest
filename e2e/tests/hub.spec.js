@@ -57,3 +57,18 @@ test('휴대폰 폭에서도 가로 스크롤이 없어요', async ({ page }) =>
   await expect(page.locator('#hero .btn-primary')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
+
+test('내 상태에 연속 학습일과 이번 주 기록', async ({ page }) => {
+  await signup(page, uniqueName('hb'));
+  await expect(page.locator('#activity')).toBeVisible();
+  await expect(page.locator('#activity .act-head')).toContainText('0일');
+  await expect(page.locator('#activity .act-tip')).toContainText('연속 학습이 시작돼요');
+  await expect(page.locator('#activity .week li')).toHaveCount(7);
+
+  await api(page, '/api/progress/sql', { method: 'PUT', body: { data: { solved: questIds('sql').slice(0, 2) }, version: 0 } });
+  await page.reload();
+  await expect(page.locator('#activity .act-head')).toContainText('1일');
+  await expect(page.locator('#activity .flame.on')).toHaveCount(1);
+  await expect(page.locator('#activity .week li.today')).toHaveClass(/lv2/);
+  await expect(page.locator('#activity .week-sum')).toContainText('2개 완료');
+});
