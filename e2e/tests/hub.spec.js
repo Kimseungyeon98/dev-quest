@@ -74,6 +74,21 @@ test('랭킹을 누적 · 이번 주로 바꿔 볼 수 있고, 고른 기간을 
   await expect(page.locator('#rankingBody thead th')).toHaveCount(6);
 });
 
+test('너무 빠르게 끝내면 확인하는 동안 랭킹에서 빠지고, 본인에게 이유를 알려 줘요', async ({ page }) => {
+  await signup(page, uniqueName('hb'));
+  const linux = questIds('linux');
+  // 한 번에 5개씩(한꺼번에 들어온 기록으로 보지 않는 최대) 5번 = 10분 안에 25개
+  for (let i = 1; i <= 5; i++) {
+    const r = await api(page, '/api/progress/linux', { method: 'PUT', body: { data: { completed: linux.slice(0, i * 5) }, version: i - 1 } });
+    expect(r.status).toBe(200);
+  }
+  await page.reload();
+  await expect(page.locator('#rankMini .rk-excluded')).toContainText('확인하는 동안 랭킹에서 잠시 빠져 있어요');
+  await expect(page.locator('#rankMini li.me')).toHaveCount(0);
+  await page.click('#openRanking');
+  await expect(page.locator('#rankingBody .rk-foot')).toContainText('내 기록은 지금 랭킹에서 빠져 있어요');
+});
+
 test('휴대폰 폭에서도 가로 스크롤이 없어요', async ({ page }) => {
   await signup(page, uniqueName('hb'));
   await page.setViewportSize({ width: 390, height: 844 });

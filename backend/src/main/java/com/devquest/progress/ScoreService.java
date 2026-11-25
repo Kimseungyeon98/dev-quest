@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,11 +29,14 @@ public class ScoreService {
     private final JdbcTemplate jdbc;
     private final QuestCatalog catalog;
     private final ObjectMapper json;
+    private final int bulkLimit;
 
-    public ScoreService(JdbcTemplate jdbc, QuestCatalog catalog, ObjectMapper json) {
+    public ScoreService(JdbcTemplate jdbc, QuestCatalog catalog, ObjectMapper json,
+            @Value("${devquest.ranking.bulk-limit:5}") int bulkLimit) {
         this.jdbc = jdbc;
         this.catalog = catalog;
         this.json = json;
+        this.bulkLimit = bulkLimit;
     }
 
     /** 진행도를 저장할 때 같이 불러요 (지금 막 저장한 기록이라 완료 시각이 정확해요) */
@@ -47,6 +51,8 @@ public class ScoreService {
      *   <li>완료 기록: 새로 끝낸 퀘스트는 시각과 함께 추가, 진행 기록에서 빠진 퀘스트(초기화 등)는 삭제</li>
      * </ul>
      * live = false 는 시각을 모르는 예전 기록을 채울 때예요 (스트릭·주간 랭킹에서 빠져요).
+     * 한 번 저장에 새로 끝낸 퀘스트가 bulk-limit 보다 많아도 live = false 로 기록해요. 오프라인에서 쌓인 기록이거나
+     * 브라우저 저장소를 고친 기록이라 "지금 끝냈다"는 시각을 믿을 수 없어요 (누적 점수에는 들어가요).
      */
     public void update(long userId, String courseId, JsonNode data, Instant when, boolean live) {
         syncCompletions(userId, courseId, data, when, live);
@@ -64,6 +70,11 @@ public class ScoreService {
         Set<String> done = catalog.doneIds(courseId, data);
         Set<String> recorded = new HashSet<>(jdbc.queryForList(
                 "select quest_id from quest_completions where user_id = ? and course_id = ?", String.class, userId, courseId));
+        long fresh = done.stream().filter(id -> !recorded.contains(id)).count();
+        if (live && fresh > bulkLimit) {
+            log.info("한 번에 새 완료 {}개 (user {}, {}): 완료 시각을 믿지 않고 live = false 로 기록", fresh, userId, courseId);
+            live = false;
+        }
         List<Object[]> added = new ArrayList<>();
         for (String id : done) {
             if (recorded.contains(id)) continue;

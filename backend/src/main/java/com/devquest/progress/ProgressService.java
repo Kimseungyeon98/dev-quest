@@ -32,14 +32,16 @@ public class ProgressService {
     private final ObjectMapper json;
     private final Set<String> courses;
     private final ScoreService scores;
+    private final RankingGuard guard;
     private final int maxBytes;
 
-    public ProgressService(JdbcTemplate jdbc, ObjectMapper json, QuestCatalog catalog, ScoreService scores,
+    public ProgressService(JdbcTemplate jdbc, ObjectMapper json, QuestCatalog catalog, ScoreService scores, RankingGuard guard,
             @Value("${devquest.progress.max-bytes}") int maxBytes) {
         this.jdbc = jdbc;
         this.json = json;
         this.courses = Set.copyOf(catalog.courseIds()); // 저장할 수 있는 과목 = 퀘스트 카탈로그의 과목
         this.scores = scores;
+        this.guard = guard;
         this.maxBytes = maxBytes;
     }
 
@@ -87,6 +89,7 @@ public class ProgressService {
         if (saved.isEmpty()) throw new VersionConflictException(get(userId, course));
         CourseProgress result = saved.getFirst();
         scores.update(userId, course, result.data(), result.updatedAt());
+        guard.check(userId);
         return result;
     }
 

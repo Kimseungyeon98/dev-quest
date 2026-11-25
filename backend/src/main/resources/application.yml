@@ -75,6 +75,16 @@ devquest:
     # 저장할 수 있는 과목은 퀘스트 카탈로그(shared/quests.json, courses.js 에서 생성)의 과목이에요
     # 과목 하나의 진행도 JSON 최대 크기 (Algorithm Quest 는 작성 중인 코드까지 저장해서 넉넉히)
     max-bytes: 524288
+  ranking:
+    # 랭킹 부정 방지 (자세한 건 progress/RankingGuard.java)
+    # 한 번 저장에 새로 끝낸 퀘스트가 이보다 많으면 한꺼번에 들어온 기록이라 완료 시각을 믿지 않아요 (주간 랭킹·스트릭에서 빠짐)
+    bulk-limit: 5
+    # 이 시간 동안 이보다 많이 끝내면 자동으로 랭킹에서 잠시 빼고 관리자 확인을 기다려요
+    pace-window: 10m
+    pace-limit: 20
+    # 가입한 지 이 시간 안에 전체 XP 의 이 비율 이상을 모으면 마찬가지로 확인을 기다려요
+    new-account-window: 24h
+    new-account-share: 0.5
   limits:
     login-failures: 5     # 같은 아이디+IP 로 15분 안에 이만큼 틀리면 15분 차단
     signups-per-hour: 10  # 같은 IP 에서 1시간에 가입할 수 있는 횟수

@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>XP 가 높은 순, 같으면 그 XP 에 먼저 도달한 순 (등수는 겹치지 않아요)</li>
  *   <li>XP 가 0 인 사람은 빠져요. 다른 사람은 닉네임만 보여요 (로그인 아이디는 보여 주지 않아요)</li>
  *   <li>me: 내 순위 (상위 목록 밖이어도), 아직 XP 가 없으면 null</li>
+ *   <li>랭킹 확인 중(review)이거나 숨긴(hidden) 계정은 빠져요 (RankingGuard). 본인에게는 myStatus 로 알려 줘요</li>
  * </ul>
  * 티어·레벨은 프론트가 shared/dq.js 의 같은 규칙으로 xp / maxXp 에서 계산해요.
  */
@@ -57,8 +58,9 @@ public class RankingController {
     }
 
     /** weekStart: period=week 일 때 이번 주 월요일 (아니면 null) */
+    /** myStatus: 내 랭킹 상태 (ok · trusted 면 랭킹에 보이고, review · hidden 이면 빠져요) */
     public record Ranking(String course, String period, LocalDate weekStart, int maxXp, int totalQuests, int players,
-            List<Entry> entries, Entry me) {
+            List<Entry> entries, Entry me, String myStatus) {
     }
 
     @GetMapping
@@ -105,7 +107,7 @@ public class RankingController {
                            row_number() over (order by s.xp desc, s.reached_at asc, s.user_id asc) as rank,
                            count(*) over () as players
                     from scores s join users u on u.id = s.user_id
-                    where s.xp > 0
+                    where s.xp > 0 and u.ranking_status in ('ok', 'trusted')
                 )
                 select * from ranked where rank <= ? or user_id = ? order by rank""".formatted(scores),
                 rs -> {
@@ -115,6 +117,8 @@ public class RankingController {
                     if (e.rank() <= top) entries.add(e);
                     if (mine) me[0] = e;
                 }, params);
-        return new Ranking(course, period, weekStart, maxXp, totalQuests, players[0], entries, me[0]);
+        String myStatus = jdbc.query("select ranking_status from users where id = ?", (rs, i) -> rs.getString(1), myId)
+                .stream().findFirst().orElse(RankingGuard.OK);
+        return new Ranking(course, period, weekStart, maxXp, totalQuests, players[0], entries, me[0], myStatus);
     }
 }

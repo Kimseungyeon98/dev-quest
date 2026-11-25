@@ -156,6 +156,7 @@
   .rk-table td:last-child, .rk-table th:last-child { padding-right: 14px; }
   .rk-table tr.gap td { text-align: center; color: var(--muted); padding: 2px; font-size: 12px; }
   .rk-foot { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+  .rk-excluded { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; color: #e3b341; background: rgba(227,179,65,.08); border: 1px solid rgba(227,179,65,.35); }
   /* 누적 · 이번 주 전환 */
   .seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 99px; border: 1px solid var(--line-strong); flex: none; }
   .seg button { font: inherit; font-size: 12px; font-weight: 700; min-height: 28px; padding: 0 12px; border-radius: 99px; border: 0; cursor: pointer; color: var(--muted); background: transparent; white-space: nowrap; }
@@ -453,6 +454,12 @@
     all: '아직 랭킹에 오른 사람이 없어요. 첫 퀘스트를 깨면 1등이에요!',
     week: '이번 주에 퀘스트를 깬 사람이 아직 없어요. 지금 깨면 이번 주 1등이에요!'
   };
+  /* 랭킹 확인 중(review)·숨김(hidden)이면 본인에게 이유를 알려 줘요 */
+  const EXCLUDED = {
+    review: '퀘스트를 아주 빠르게 끝낸 기록이 있어서 확인하는 동안 랭킹에서 잠시 빠져 있어요. 진행도는 그대로 저장되고, 확인이 끝나면 다시 보여요.',
+    hidden: '운영 정책에 따라 랭킹에서 빠져 있어요. 진행도는 그대로 저장돼요.'
+  };
+  const excludedHtml = (data) => EXCLUDED[data.myStatus] ? `<p class="rk-excluded" role="note">${EXCLUDED[data.myStatus]}</p>` : '';
   function weekLabel(data) {
     if (!data.weekStart) return '';
     const [, m, d] = data.weekStart.split('-').map(Number);
@@ -483,7 +490,7 @@
     el.innerHTML = `<div class="sec-head" style="margin:0"><h2 id="rankMiniTitle">랭킹 <small>· ${sub}</small></h2>
         <div class="seg" data-seg role="group" aria-label="랭킹 기간"></div>
         <button type="button" class="linkbtn" id="openRanking" aria-controls="ranking" aria-expanded="${!document.getElementById('ranking').hidden}">전체 랭킹 보기 →</button></div>
-      ${list}${nudge}`;
+      ${list}${excludedHtml(data)}${nudge}`;
     paintSegs();
     el.querySelector('#openRanking').addEventListener('click', toggleRanking);
     const nb = el.querySelector('#nickBtn');
@@ -559,17 +566,18 @@
     document.getElementById('rankingNote').textContent = week
       ? `이번 주 ${weekLabel(data)} 새로 끝낸 퀘스트의 XP 예요 (한국 시간). XP 가 같으면 먼저 도달한 사람이 위예요`
       : 'XP 가 같으면 먼저 도달한 사람이 위예요';
-    if (!data.entries.length) { body.innerHTML = `<p class="empty">${EMPTY[week ? 'week' : 'all']}</p>`; return; }
+    if (!data.entries.length) { body.innerHTML = `<p class="empty">${EMPTY[week ? 'week' : 'all']}</p>` + excludedHtml(data); return; }
     const cols = week ? 4 : 6;
     let rows = data.entries.map((e) => rowHtml(e, data)).join('');
     if (data.me && !data.entries.some((e) => e.me)) rows += `<tr class="gap"><td colspan="${cols}">⋯</td></tr>` + rowHtml(data.me, data);
     const head = week
       ? '<th>순위</th><th>닉네임</th><th class="num">XP</th><th class="num">완료</th>'
       : '<th>순위</th><th>닉네임</th><th>티어</th><th class="num lv">레벨</th><th class="num">XP</th><th class="num done">완료</th>';
-    const mine = data.me ? `내 순위 <b>${data.me.rank}위</b>`
+    const mine = EXCLUDED[data.myStatus] ? '내 기록은 지금 랭킹에서 빠져 있어요'
+      : data.me ? `내 순위 <b>${data.me.rank}위</b>`
       : (week ? '이번 주엔 아직 내 순위가 없어요 — 퀘스트를 깨면 올라가요' : '아직 내 순위가 없어요 — 퀘스트를 깨면 올라가요');
     body.innerHTML = `<div class="rk-list"><table class="rk-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`
-      + `<p class="rk-foot">${week ? '이번 주 ' : ''}${data.players.toLocaleString()}명 참여 · ${mine}</p>`;
+      + `<p class="rk-foot">${week ? '이번 주 ' : ''}${data.players.toLocaleString()}명 참여 · ${mine}</p>` + excludedHtml(data);
   }
 
   /* ---------- 시작 ---------- */

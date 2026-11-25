@@ -81,6 +81,23 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 - 랭킹에는 **닉네임**만 보이고 로그인 아이디는 보이지 않아요. 가입하면 `모험가1234` 같은 기본 닉네임이 붙고, 상단 바나 허브의 닉네임을 눌러 바꿀 수 있어요 (한글·영문·숫자·_ 2~12자, 대소문자 구분 없이 하나만).
 - API: `GET /api/ranking?course=all|linux|sql|git|algo&period=all|week&limit=50` (응답의 `weekStart` = 이번 주 월요일) · `PUT /api/me/nickname` `{ nickname }` · `GET /api/me` → `{ username, nickname, defaultNickname }`
 
+### 랭킹 부정 방지
+
+진행도는 브라우저가 보내는 기록이라 마음먹고 고치면 완전히 막을 수는 없어요. 대신 사람이 풀 수 없는 속도의 기록을 찾아서 **랭킹에서만** 빼고(진행도·스트릭은 그대로) 관리자가 확인해요. 기준은 `application.yml` 의 `devquest.ranking.*` 에서 바꿔요.
+
+- **한꺼번에 들어온 기록**: 한 번 저장에 새로 끝낸 퀘스트가 5개를 넘으면 완료 시각을 믿지 않아요 (`live = false`). 누적 점수에는 들어가지만 주간 랭킹·스트릭에는 안 들어가요.
+- **너무 빠른 완료**: 10분 동안 20개를 넘게 끝내면 자동으로 **확인 중(review)** 이 되어 랭킹에서 빠져요.
+- **새 계정의 급격한 XP**: 가입 24시간 안에 전체 XP 의 절반 이상을 모아도 확인 중이 돼요.
+- 본인에게는 허브 랭킹에 "확인하는 동안 랭킹에서 잠시 빠져 있어요" 안내가 보여요.
+- 관리자(`ADMIN_TOKEN` 필요):
+  ```bash
+  # 확인을 기다리는·숨긴 계정 목록 (이유·XP·최근 하루 완료 수)
+  curl https://주소/api/admin/ranking/review -H "X-Admin-Token: $ADMIN_TOKEN"
+  # status: ok(되돌리기) · trusted(되돌리고 다시는 자동으로 빼지 않기) · hidden(숨기기)
+  curl -X PUT https://주소/api/admin/users/아이디/ranking -H "X-Admin-Token: $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" -d '{"status":"trusted"}'
+  ```
+
 ### 완료 기록 · 연속 학습일
 
 - 진행도를 저장할 때 서버가 이전 기록과 비교해 **새로 끝낸 퀘스트를 완료 시각과 함께** `quest_completions` 에 남기고, 진행 기록에서 빠진 퀘스트는 지워요 (과목 앱은 그대로).
