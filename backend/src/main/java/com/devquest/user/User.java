@@ -28,6 +28,10 @@ public class User {
     @Column(nullable = false, length = 20)
     private String nickname;
 
+    /** 복구 코드의 {bcrypt} 해시. 아직 만들지 않았으면 null */
+    @Column(name = "recovery_code_hash", length = 100)
+    private String recoveryCodeHash;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -63,6 +67,20 @@ public class User {
 
     public String getNickname() {
         return nickname;
+    }
+
+    public String getRecoveryCodeHash() {
+        return recoveryCodeHash;
+    }
+
+    public void changePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.updatedAt = Instant.now();
+    }
+
+    public void changeRecoveryCode(String recoveryCodeHash) {
+        this.recoveryCodeHash = recoveryCodeHash;
+        this.updatedAt = Instant.now();
     }
 
     public void changeNickname(String nickname) {

@@ -97,6 +97,8 @@
     clock: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M12 7.5V12l3 2',
     trophy: 'M8 21h8 M12 17v4 M7 4h10v5a5 5 0 0 1-10 0z M7 6H4v2a3 3 0 0 0 3 3 M17 6h3v2a3 3 0 0 1-3 3',
     arrow: 'M5 12h14 M13 6l6 6-6 6',
+    copy: 'M8.5 8.5h11v12h-11z M5.5 15.5h-1v-12h11v1',
+    download: 'M12 4v11 M7.5 10.5 12 15l4.5-4.5 M5 20h14',
     terminal: 'M3.5 5.5h17v13h-17z M7.5 10l3 2.5-3 2.5 M13 15h4',
     dot: 'M12 12h.01',
   };
@@ -428,11 +430,14 @@
     meCache = Promise.resolve({ ok: true, status: 200, data });
     document.querySelectorAll('.dq-account .dq-uname').forEach((el) => { el.textContent = data.nickname; });
     document.querySelectorAll('.dq-account .dq-avatar').forEach((el) => { el.textContent = Array.from(data.nickname)[0] || '?'; });
-    document.querySelectorAll('.dq-account .dq-user').forEach((el) => { el.title = `닉네임 바꾸기 (로그인 아이디: ${data.username})`; });
+    document.querySelectorAll('.dq-account .dq-user').forEach((el) => {
+      el.title = `내 계정 (로그인 아이디: ${data.username})`;
+      el.classList.toggle('needs-rc', !data.hasRecoveryCode);
+    });
     window.dispatchEvent(new CustomEvent('dq:me', { detail: data })); // 허브 랭킹 등이 다시 그려요
   }
 
-  /* 로그인한 사람(닉네임)과 로그아웃 버튼. 닉네임을 누르면 바꿀 수 있어요.
+  /* 로그인한 사람(닉네임)과 로그아웃 버튼. 닉네임을 누르면 내 계정(닉네임·비밀번호·복구 코드) 창이 열려요.
    * 백엔드 없이 파일·serve.js 로 열면(/api/me 가 없으면) 아무것도 안 보여요 */
   async function mountAccount(host) {
     if (!host || location.protocol === 'file:') return;
@@ -440,60 +445,177 @@
     const r = await getMe();
     if (!r.ok || !r.data || !r.data.username) return;
     host.innerHTML = '<span class="dq-sync" aria-live="polite"></span>'
-      + `<button type="button" class="dq-user" title="닉네임 바꾸기 (로그인 아이디: ${esc(r.data.username)})"><span class="dq-avatar" aria-hidden="true">${esc(Array.from(r.data.nickname)[0] || '?')}</span><span class="dq-uname">${esc(r.data.nickname)}</span></button>`
+      + `<button type="button" class="dq-user${r.data.hasRecoveryCode ? '' : ' needs-rc'}" title="내 계정 (로그인 아이디: ${esc(r.data.username)})" aria-haspopup="dialog"><span class="dq-avatar" aria-hidden="true">${esc(Array.from(r.data.nickname)[0] || '?')}</span><span class="dq-uname">${esc(r.data.nickname)}</span></button>`
       + '<button type="button" class="dq-logout">로그아웃</button>';
-    host.querySelector('.dq-user').addEventListener('click', () => openNicknameDialog());
+    host.querySelector('.dq-user').addEventListener('click', () => openAccountDialog());
     host.querySelector('.dq-logout').addEventListener('click', logout);
     if (sync.mode() === 'server') sync.setStatus('saved');
+    // 복구 코드가 없는 계정(복구 기능 전에 가입)에는 브라우저 세션당 한 번 알려 줘요
+    if (!r.data.hasRecoveryCode) {
+      let shown = false;
+      try { shown = sessionStorage.getItem('devQuest:rcNudge') === '1'; sessionStorage.setItem('devQuest:rcNudge', '1'); } catch (e) { /* 무시 */ }
+      if (!shown) notice('비밀번호를 잊었을 때 쓸 복구 코드가 아직 없어요.', { label: '만들기', run: () => { document.getElementById('dq-notice').classList.remove('show'); openAccountDialog('recovery'); } });
+    }
   }
 
-  /* 닉네임 바꾸기 창. 저장하면 화면의 닉네임을 모두 바꾸고 'dq:me' 이벤트를 보내요 */
-  const NICKNAME_RE = /^[가-힣A-Za-z0-9_]{2,12}$/;
-  async function openNicknameDialog() {
-    const r = await getMe();
-    if (!r.ok || !r.data) return;
+  /* ---------- 창(모달) 공통 ----------
+   * html 을 담은 창을 열고 { box, close } 를 돌려줘요. Esc·바깥 클릭·[data-close] 로 닫혀요 (locked 면 닫히지 않아요). */
+  function openModal(html, opts) {
+    const o = opts || {};
     const opener = document.activeElement;
     const wrap = document.createElement('div');
     wrap.className = 'dq-modal';
-    wrap.innerHTML = `
-      <form class="dq-modal-box" role="dialog" aria-modal="true" aria-labelledby="dqNickTitle" novalidate>
-        <h2 id="dqNickTitle">닉네임 바꾸기</h2>
-        <p class="dq-modal-sub">랭킹에는 로그인 아이디 대신 닉네임이 보여요.</p>
-        <label for="dqNick">닉네임</label>
-        <input id="dqNick" type="text" maxlength="12" autocomplete="nickname" spellcheck="false" value="${esc(r.data.defaultNickname ? '' : r.data.nickname)}" placeholder="${esc(r.data.nickname)}" />
-        <p class="dq-modal-hint">한글·영문·숫자·_ 2~12자 · 다른 사람과 겹치지 않게</p>
-        <p class="dq-modal-error" role="alert"></p>
-        <div class="dq-modal-actions">
-          <button type="button" class="dq-btn-ghost" data-close>취소</button>
-          <button type="submit" class="dq-btn">저장</button>
-        </div>
-      </form>`;
+    wrap.innerHTML = `<div class="dq-modal-box${o.wide ? ' wide' : ''}" role="dialog" aria-modal="true"${o.labelledBy ? ` aria-labelledby="${o.labelledBy}"` : ''}>${html}</div>`;
     document.body.appendChild(wrap);
-    const input = wrap.querySelector('#dqNick');
-    const error = wrap.querySelector('.dq-modal-error');
-    const submit = wrap.querySelector('button[type="submit"]');
-    input.focus();
+    const box = wrap.firstElementChild;
     function close() {
       wrap.remove();
       document.removeEventListener('keydown', onKey);
       if (opener && opener.focus) opener.focus();
+      if (o.onClose) o.onClose();
     }
-    function onKey(e) { if (e.key === 'Escape') close(); }
+    function onKey(e) { if (e.key === 'Escape' && !o.locked) close(); }
     document.addEventListener('keydown', onKey);
-    wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.hasAttribute('data-close')) close(); });
-    wrap.querySelector('form').addEventListener('submit', async (e) => {
+    wrap.addEventListener('click', (e) => {
+      if (o.locked) return;
+      if (e.target === wrap || (e.target.closest && e.target.closest('[data-close]'))) close();
+    });
+    const first = box.querySelector('[autofocus], input, button');
+    if (first) first.focus();
+    return { box, close };
+  }
+  const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,64}$/;
+  const NICKNAME_RE = /^[가-힣A-Za-z0-9_]{2,12}$/;
+
+  /* 복구 코드 보여 주기: 한 번만 보이니 복사·저장하고 "저장했어요"를 체크해야 닫혀요 */
+  function showRecoveryCode(code, opts) {
+    const o = opts || {};
+    const m = openModal(`
+      <h2 id="dqRcTitle">${esc(o.title || '복구 코드를 저장해 두세요')}</h2>
+      <p class="dq-modal-sub">비밀번호를 잊었을 때 <b>아이디 + 이 코드</b>로 새 비밀번호를 정할 수 있어요. 이 코드는 <b>지금 한 번만</b> 보여요.</p>
+      <p class="dq-code" id="dqRcCode">${esc(code)}</p>
+      <div class="dq-modal-actions start">
+        <button type="button" class="dq-btn-ghost" id="dqRcCopy">${icon('copy')} 복사</button>
+        <button type="button" class="dq-btn-ghost" id="dqRcSave">${icon('download')} 파일로 저장</button>
+      </div>
+      <label class="dq-check"><input type="checkbox" id="dqRcOk" /> 안전한 곳에 저장했어요</label>
+      <div class="dq-modal-actions"><button type="button" class="dq-btn" id="dqRcDone" disabled>${esc(o.doneLabel || '확인')}</button></div>`,
+      { labelledBy: 'dqRcTitle', locked: true });
+    const box = m.box;
+    box.querySelector('#dqRcCopy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(code); notice('복구 코드를 복사했어요.'); }
+      catch (e) { const r = document.createRange(); r.selectNodeContents(box.querySelector('#dqRcCode')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); notice('코드를 선택했어요. Ctrl+C 로 복사해 주세요.'); }
+    });
+    box.querySelector('#dqRcSave').addEventListener('click', () => {
+      const text = `Dev Quest 복구 코드\n아이디: ${o.username || ''}\n복구 코드: ${code}\n\n비밀번호를 잊었을 때 로그인 화면의 "비밀번호를 잊었어요"에서 아이디와 이 코드로 새 비밀번호를 정할 수 있어요.\n한 번 쓰면 새 코드로 바뀌어요.\n`;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+      a.download = 'dev-quest-recovery-code.txt';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    const ok = box.querySelector('#dqRcOk'), done = box.querySelector('#dqRcDone');
+    ok.addEventListener('change', () => { done.disabled = !ok.checked; });
+    done.addEventListener('click', () => { m.close(); if (o.onDone) o.onDone(); });
+  }
+
+  /* 내 계정: 닉네임 · 비밀번호 바꾸기 · 복구 코드. section 으로 처음 보여 줄 곳을 고를 수 있어요 */
+  async function openAccountDialog(section) {
+    const r = await getMe();
+    if (!r.ok || !r.data) return;
+    const me = r.data;
+    const m = openModal(`
+      <div class="dq-modal-head"><h2 id="dqAccTitle">내 계정</h2><button type="button" class="dq-x" data-close aria-label="닫기">${icon('close', 18)}</button></div>
+      <p class="dq-modal-sub">로그인 아이디 <b>${esc(me.username)}</b> · 아이디는 다른 사람에게 보이지 않아요.</p>
+
+      <form class="dq-sec" data-sec="nickname" novalidate>
+        <h3>닉네임</h3>
+        <label for="dqNick">랭킹에 보이는 이름</label>
+        <input id="dqNick" type="text" maxlength="12" autocomplete="nickname" spellcheck="false" value="${esc(me.defaultNickname ? '' : me.nickname)}" placeholder="${esc(me.nickname)}" />
+        <p class="dq-modal-hint">한글·영문·숫자·_ 2~12자 · 다른 사람과 겹치지 않게</p>
+        <p class="dq-modal-error" role="alert"></p>
+        <div class="dq-modal-actions"><button type="submit" class="dq-btn">닉네임 저장</button></div>
+      </form>
+
+      <form class="dq-sec" data-sec="password" novalidate>
+        <h3>비밀번호 바꾸기</h3>
+        <label for="dqPwCur">지금 비밀번호</label>
+        <input id="dqPwCur" type="password" autocomplete="current-password" maxlength="64" />
+        <label for="dqPwNew">새 비밀번호</label>
+        <input id="dqPwNew" type="password" autocomplete="new-password" maxlength="64" />
+        <label for="dqPwNew2">새 비밀번호 확인</label>
+        <input id="dqPwNew2" type="password" autocomplete="new-password" maxlength="64" />
+        <p class="dq-modal-hint">8~64자, 영문과 숫자를 모두 · 바꾸면 다른 기기의 로그인은 끊겨요</p>
+        <p class="dq-modal-error" role="alert"></p>
+        <div class="dq-modal-actions"><button type="submit" class="dq-btn">비밀번호 바꾸기</button></div>
+      </form>
+
+      <form class="dq-sec" data-sec="recovery" novalidate>
+        <h3>복구 코드</h3>
+        <p class="dq-modal-hint dq-rc-state">${me.hasRecoveryCode
+          ? '복구 코드가 있어요. 잃어버렸으면 새로 만들어요 (예전 코드는 더 이상 못 써요).'
+          : '<b class="dq-warn-text">아직 복구 코드가 없어요.</b> 비밀번호를 잊으면 계정을 되찾을 수 없으니 지금 만들어 두세요.'}</p>
+        <label for="dqRcPw">비밀번호 확인</label>
+        <input id="dqRcPw" type="password" autocomplete="current-password" maxlength="64" />
+        <p class="dq-modal-error" role="alert"></p>
+        <div class="dq-modal-actions"><button type="submit" class="dq-btn">${me.hasRecoveryCode ? '새로 만들기' : '복구 코드 만들기'}</button></div>
+      </form>`, { wide: true, labelledBy: 'dqAccTitle' });
+    const box = m.box;
+    const sec = (name) => box.querySelector(`[data-sec="${name}"]`);
+    function fail(form, res, fallback) {
+      const err = form.querySelector('.dq-modal-error');
+      err.textContent = (res && res.data && res.data.error) || fallback;
+      const field = res && res.data && res.data.field;
+      const map = { nickname: '#dqNick', currentPassword: form.dataset.sec === 'recovery' ? '#dqRcPw' : '#dqPwCur', newPassword: '#dqPwNew', password: '#dqRcPw' };
+      const el = (field && map[field] && form.querySelector(map[field])) || form.querySelector('input');
+      if (el) el.focus();
+    }
+    if (section && sec(section)) { const el = sec(section).querySelector('input'); sec(section).scrollIntoView({ block: 'nearest' }); if (el) el.focus(); }
+
+    sec('nickname').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const nickname = input.value.trim();
-      if (!NICKNAME_RE.test(nickname)) { error.textContent = '닉네임은 한글·영문·숫자·_ 2~12자예요.'; input.focus(); return; }
-      submit.disabled = true;
+      const form = e.currentTarget, nickname = form.querySelector('#dqNick').value.trim();
+      if (!NICKNAME_RE.test(nickname)) return fail(form, null, '닉네임은 한글·영문·숫자·_ 2~12자예요.');
+      const btn = form.querySelector('button'); btn.disabled = true;
       const res = await api('/api/me/nickname', { method: 'PUT', body: { nickname } });
-      submit.disabled = false;
-      if (!res.ok) { error.textContent = (res.data && res.data.error) || '저장하지 못했어요. 잠시 후 다시 시도해 주세요.'; input.focus(); return; }
+      btn.disabled = false;
+      if (!res.ok) return fail(form, res, '저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
+      form.querySelector('.dq-modal-error').textContent = '';
       setMe(res.data);
-      close();
       notice(`닉네임을 "${res.data.nickname}"(으)로 바꿨어요.`);
     });
+    sec('password').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const cur = form.querySelector('#dqPwCur').value, next = form.querySelector('#dqPwNew').value, next2 = form.querySelector('#dqPwNew2').value;
+      if (!cur) return fail(form, { data: { error: '지금 비밀번호를 입력해 주세요.', field: 'currentPassword' } });
+      if (!PASSWORD_RE.test(next)) return fail(form, { data: { error: '새 비밀번호는 8~64자이고, 영문과 숫자를 모두 넣어 주세요.', field: 'newPassword' } });
+      if (next !== next2) { form.querySelector('.dq-modal-error').textContent = '새 비밀번호 확인이 일치하지 않아요.'; form.querySelector('#dqPwNew2').focus(); return; }
+      const btn = form.querySelector('button'); btn.disabled = true;
+      const res = await api('/api/me/password', { method: 'PUT', body: { currentPassword: cur, newPassword: next } });
+      btn.disabled = false;
+      if (!res.ok) return fail(form, res, '바꾸지 못했어요. 잠시 후 다시 시도해 주세요.');
+      form.reset();
+      form.querySelector('.dq-modal-error').textContent = '';
+      notice('비밀번호를 바꿨어요. 다른 기기의 로그인은 끊겼어요.');
+    });
+    sec('recovery').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget, password = form.querySelector('#dqRcPw').value;
+      if (!password) return fail(form, { data: { error: '비밀번호를 입력해 주세요.', field: 'password' } });
+      const btn = form.querySelector('button'); btn.disabled = true;
+      const res = await api('/api/me/recovery-code', { method: 'POST', body: { password } });
+      btn.disabled = false;
+      if (!res.ok) return fail(form, res, '만들지 못했어요. 잠시 후 다시 시도해 주세요.');
+      m.close();
+      const { recoveryCode, ...rest } = res.data;
+      setMe(rest);
+      showRecoveryCode(recoveryCode, { username: rest.username, title: '새 복구 코드를 저장해 두세요' });
+    });
   }
+  /* 예전 이름 (허브의 "닉네임 정하기" 등에서 불러요) */
+  function openNicknameDialog() { return openAccountDialog('nickname'); }
+
   async function logout() {
     await sync.beforeLogout();
     await api('/api/auth/logout', { method: 'POST' });
@@ -554,7 +676,7 @@
       + (cat.desc ? `<div class="dq-cat-desc">${esc(cat.desc)}</div>` : '') + bodyHtml + '</details>';
   }
 
-  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout, sync, afterSync, merge, notice, getMe, openNicknameDialog,
+  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout, sync, afterSync, merge, notice, getMe, openNicknameDialog, openAccountDialog, showRecoveryCode, openModal,
     icon, decorateIcons, armNext, disarmNext, nextButton };
   // 정적 HTML 의 <span data-icon="…"> 채우기 (스크립트는 body 끝에서 불러서 요소가 이미 있어요)
   if (typeof document !== 'undefined') {

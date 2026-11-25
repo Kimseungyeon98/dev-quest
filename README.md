@@ -45,6 +45,20 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 - API: `POST /api/auth/signup` · `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/me`. POST 는 `XSRF-TOKEN` 쿠키 값을 `X-XSRF-TOKEN` 헤더로 보내야 해요 (프론트는 `DevQuest.api()` 가 알아서 해요).
 - 배포할 때 `REMEMBER_ME_KEY` 환경 변수에 임의의 긴 문자열을 넣어 두면 좋아요.
 
+### 비밀번호 변경 · 복구
+
+이메일을 받지 않아서, 비밀번호를 잊었을 때는 **복구 코드**로 되찾아요.
+
+- **복구 코드**: 가입하면 `ABCD-EFGH-JKMN-PQRS` 모양의 16자리 코드를 한 번만 보여 줘요 (복사·파일로 저장). 서버에는 bcrypt 해시만 저장해요. 로그인 화면의 "비밀번호를 잊었어요"에서 아이디 + 복구 코드로 새 비밀번호를 정하면 바로 로그인되고, 쓴 코드는 새 코드로 바뀌어요. 복구 기능 전에 가입한 계정은 "내 계정"에서 만들 수 있어요(아바타의 주황 점이 알려 줘요).
+- **내 계정**(상단 바의 닉네임 클릭): 닉네임, 비밀번호 바꾸기(다른 기기의 로그인·자동 로그인은 끊기고 이 기기는 그대로), 복구 코드 새로 만들기(비밀번호 확인).
+- 복구·비밀번호 확인도 로그인처럼 15분 안에 5번 틀리면 잠시 막혀요.
+- **관리자 임시 비밀번호**: 복구 코드도 잃어버린 사람을 위해, `ADMIN_TOKEN` 환경 변수(24자 이상)를 넣으면 관리자 API 가 켜져요. 비워 두면 꺼져 있어요(404).
+  ```bash
+  curl -X POST https://<주소>/api/admin/users/<아이디>/reset-password -H "X-Admin-Token: <ADMIN_TOKEN>"
+  ```
+  임시 비밀번호를 돌려주고 그 계정의 모든 로그인을 끊어요. 로그인한 뒤 "내 계정"에서 비밀번호를 바꾸라고 알려 주세요.
+- API: `PUT /api/me/password` `{ currentPassword, newPassword }` · `POST /api/me/recovery-code` `{ password }` · `POST /api/auth/recover` `{ username, recoveryCode, newPassword, rememberMe }`
+
 ### 진행도 API
 
 과목 앱이 저장하던 JSON 을 과목별로 그대로 계정에 저장해요. `version` 으로 여러 기기의 동시 저장을 막아요(낙관적 잠금).
@@ -157,9 +171,22 @@ node algo/tools/serve.js
   node algo/tools/validate-problems.js
   ```
 
+## 브라우저 테스트 (e2e)
+
+[`e2e/`](e2e/) 의 Playwright 테스트가 진짜 서버를 상대로 로그인·회원가입·복구, 진행도 동기화(로그인 전 기록 옮기기·충돌 합치기), 허브(이어하기·랭킹), 과목 화면(정답 뒤 Enter·Tab, 선 아이콘)을 확인해요. 바깥 네트워크는 막고, Algorithm Quest 의 Java 실행기(CheerpJ)는 가짜(`e2e/fixtures/stub-cheerpj.js`)로 바꿔서 돌려요.
+
+```bash
+# 1) 서버 띄우기 (테스트가 계정을 많이 만들어서 가입 제한을 풀어요)
+cd backend && ./gradlew bootJar && java -jar build/libs/dev-quest-0.0.1.jar --devquest.limits.signups-per-hour=100000
+# 2) 다른 터미널에서
+cd e2e && npm ci && npx playwright install chromium && npx playwright test
+```
+
+서버 주소가 다르면 `E2E_BASE_URL=http://localhost:8080` 처럼 알려 주세요.
+
 ## 자동 검증 (CI)
 
-푸시와 PR 마다 GitHub Actions([`.github/workflows/validate.yml`](.github/workflows/validate.yml))가 JS 문법 검사, 퀘스트 카탈로그가 최신인지, Git Quest 시나리오 검증(`node git/tools/validate-scenarios.js`), Algorithm Quest 문제 검증(JDK 17), 백엔드 테스트(JDK 21 + Testcontainers), 배포 이미지 빌드·실행 확인(Docker)을 돌려요.
+푸시와 PR 마다 GitHub Actions([`.github/workflows/validate.yml`](.github/workflows/validate.yml))가 JS 문법 검사, 퀘스트 카탈로그가 최신인지, Git Quest 시나리오 검증(`node git/tools/validate-scenarios.js`), Algorithm Quest 문제 검증(JDK 17), 백엔드 테스트(JDK 21 + Testcontainers), 배포 이미지 빌드·실행 확인(Docker), 브라우저 테스트(Playwright)를 돌려요.
 
 ## 점수와 티어
 

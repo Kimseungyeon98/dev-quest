@@ -6,6 +6,7 @@ import com.devquest.progress.ProgressService.BadProgressException;
 import com.devquest.progress.ProgressService.ProgressTooLargeException;
 import com.devquest.progress.ProgressService.UnknownCourseException;
 import com.devquest.progress.ProgressService.VersionConflictException;
+import com.devquest.user.AccountService.AccountException;
 import com.devquest.user.UserService.DuplicateNicknameException;
 import com.devquest.user.UserService.DuplicateUsernameException;
 import com.devquest.user.UserService.InvalidNicknameException;
@@ -49,6 +50,13 @@ public class ApiExceptionHandler {
     @ExceptionHandler(InvalidNicknameException.class)
     ResponseEntity<Map<String, String>> invalidNickname(InvalidNicknameException e) {
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage(), "field", "nickname"));
+    }
+
+    @ExceptionHandler(AccountException.class)
+    ResponseEntity<Map<String, String>> account(AccountException e) {
+        HttpStatus status = "recoveryCode".equals(e.getField()) || "currentPassword".equals(e.getField())
+                ? HttpStatus.UNAUTHORIZED : "username".equals(e.getField()) ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(Map.of("error", e.getMessage(), "field", e.getField()));
     }
 
     @ExceptionHandler(BadLoginException.class)

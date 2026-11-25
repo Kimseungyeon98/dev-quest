@@ -116,3 +116,68 @@ jobs:
       - name: 실패하면 앱 로그 출력
         if: failure()
         run: docker logs app || true
+
+  # 브라우저 테스트: 진짜 서버(jar)를 띄우고 Playwright 로 로그인·동기화·허브·과목 화면을 확인해요
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: devquest
+          POSTGRES_USER: devquest
+          POSTGRES_PASSWORD: devquest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: 서버 빌드
+        working-directory: backend
+        run: ./gradlew --no-daemon -q bootJar -x test
+
+      - name: 서버 실행
+        run: |
+          PGPORT=5432 PGDATABASE=devquest java -jar backend/build/libs/dev-quest-*.jar \
+            --server.port=8080 --devquest.limits.signups-per-hour=100000 > server.log 2>&1 &
+          for i in $(seq 1 60); do curl -fsS http://localhost:8080/actuator/health && break; sleep 2; done
+
+      - name: Playwright 설치
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: 브라우저 테스트
+        working-directory: e2e
+        env:
+          CI: "true"
+          E2E_BASE_URL: http://localhost:8080
+        run: npx playwright test
+
+      - name: 실패하면 서버 로그
+        if: failure()
+        run: tail -n 200 server.log
+
+      - name: 실패하면 테스트 리포트 올리기
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 7
