@@ -1569,6 +1569,10 @@
       game.completed = new Set(saved.completed || []);
       game.currentIndex = Math.min(saved.currentIndex || 0, MISSIONS.length - 1);
     }
+    // 허브의 "이어하기"가 #미션id 로 보내면 그 미션부터 (열린 미션만)
+    const linked = MISSIONS.findIndex((m) => m.id === location.hash.slice(1));
+    if (linked >= 0 && (isUnlocked(linked) || game.completed.has(MISSIONS[linked].id))) game.currentIndex = linked;
+    if (location.hash) try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* 무시 */ }
     loadMission(game.currentIndex);
     renderHeader();
     if (window.matchMedia('(max-width: 700px)').matches) {

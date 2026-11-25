@@ -151,6 +151,7 @@
 
   const sync = (function () {
     const META_KEY = 'devQuest:sync'; // { user, courses: { 과목: { version, dirty } } }
+    const ACTIVITY_KEY = 'devQuest:activity'; // { 과목: 마지막으로 진행도를 저장한 시각(ms) } — 허브 "이어하기"용
     const PUSH_DELAY = 1200;
     const RETRY_DELAY = 30000;
     const KEEPALIVE_MAX = 60000; // 페이지를 떠날 때 보내는 요청(keepalive)의 본문 한도(64KB)보다 조금 작게
@@ -169,11 +170,20 @@
       try { if (data == null) localStorage.removeItem(c.storageKey); else localStorage.setItem(c.storageKey, JSON.stringify(data)); } catch (e) { /* 무시 */ }
     }
     function entry(id) { return (meta.courses[id] = meta.courses[id] || { version: 0, dirty: false }); }
+    function activity() { try { return JSON.parse(localStorage.getItem(ACTIVITY_KEY)) || {}; } catch (e) { return {}; } }
+    function touch(id, when) {
+      const a = activity();
+      const t = typeof when === 'number' ? when : Date.parse(when);
+      if (!Number.isFinite(t)) return;
+      a[id] = Math.max(a[id] || 0, t);
+      try { localStorage.setItem(ACTIVITY_KEY, JSON.stringify(a)); } catch (e) { /* 무시 */ }
+    }
 
     function setStatus(state, title) {
       document.querySelectorAll('.dq-sync').forEach((el) => {
         el.dataset.state = state;
-        el.textContent = { saved: '☁️', saving: '⏳', error: '⚠️' }[state] || '';
+        const label = { saved: '저장됨', saving: '저장 중', error: '저장 실패' }[state] || '';
+        el.innerHTML = label ? `<span class="dq-sr">${label}</span>` : '';
         el.title = title || { saved: '진행도가 계정에 저장됐어요', saving: '진행도를 저장하는 중이에요', error: '진행도를 저장하지 못했어요' }[state] || '';
       });
     }
@@ -207,6 +217,8 @@
       }
 
       const server = (all.data && all.data.courses) || {};
+      if (!prev || prev.user !== user) { try { localStorage.removeItem(ACTIVITY_KEY); } catch (e) { /* 무시 */ } }
+      Object.keys(server).forEach((id) => { if (server[id].updatedAt) touch(id, server[id].updatedAt); });
       const toPush = [];
       courses().forEach((c) => {
         const s = server[c.id];
@@ -232,6 +244,7 @@
 
     /* 과목 앱이 진행도를 저장한 직후에 불러요 */
     function changed(id) {
+      if (courseOf(id)) touch(id, Date.now());
       if (mode !== 'server' || !meta || !courseOf(id)) return;
       entry(id).dirty = true;
       saveMeta();
@@ -257,6 +270,7 @@
       const r = await api('/api/progress/' + id, { method: 'PUT', body: { data, version: e.version } });
       if (r.ok) {
         e.version = r.data.version;
+        if (r.data.updatedAt) touch(id, r.data.updatedAt);
         if (rawLocal(c) === rawBefore) e.dirty = false; // 보내는 동안 또 바뀌었으면 한 번 더 보내요
         saveMeta();
         if (e.dirty) changed(id); else if (!Object.values(timers).some(Boolean)) setStatus('saved');
@@ -308,11 +322,12 @@
       const pending = Object.keys(meta.courses).filter((id) => meta.courses[id].dirty);
       await Promise.all(pending.map(push));
       courses().forEach((c) => writeLocal(c, null));
+      try { localStorage.removeItem(ACTIVITY_KEY); } catch (e) { /* 무시 */ }
       // 다음 로그인 때 "로그인 전 기록"으로 오해하지 않게, 기록이 비어 있다는 표시만 남겨요
       try { localStorage.setItem(META_KEY, JSON.stringify({ user: null, courses: {} })); } catch (e) { /* 무시 */ }
     }
 
-    return { ready, changed, beforeLogout, setStatus, mode: () => mode, merge };
+    return { ready, changed, beforeLogout, setStatus, activity, mode: () => mode, merge };
   })();
 
   /* 진행도를 계정과 맞춘 뒤에 과목 앱 스크립트를 실행해요 */
@@ -330,7 +345,8 @@
   }
   function setMe(data) {
     meCache = Promise.resolve({ ok: true, status: 200, data });
-    document.querySelectorAll('.dq-account .dq-uname').forEach((el) => { el.textContent = ' ' + data.nickname; });
+    document.querySelectorAll('.dq-account .dq-uname').forEach((el) => { el.textContent = data.nickname; });
+    document.querySelectorAll('.dq-account .dq-avatar').forEach((el) => { el.textContent = Array.from(data.nickname)[0] || '?'; });
     document.querySelectorAll('.dq-account .dq-user').forEach((el) => { el.title = `닉네임 바꾸기 (로그인 아이디: ${data.username})`; });
     window.dispatchEvent(new CustomEvent('dq:me', { detail: data })); // 허브 랭킹 등이 다시 그려요
   }
@@ -343,7 +359,7 @@
     const r = await getMe();
     if (!r.ok || !r.data || !r.data.username) return;
     host.innerHTML = '<span class="dq-sync" aria-live="polite"></span>'
-      + `<button type="button" class="dq-user" title="닉네임 바꾸기 (로그인 아이디: ${esc(r.data.username)})"><span aria-hidden="true">👤</span><span class="dq-uname"> ${esc(r.data.nickname)}</span></button>`
+      + `<button type="button" class="dq-user" title="닉네임 바꾸기 (로그인 아이디: ${esc(r.data.username)})"><span class="dq-avatar" aria-hidden="true">${esc(Array.from(r.data.nickname)[0] || '?')}</span><span class="dq-uname">${esc(r.data.nickname)}</span></button>`
       + '<button type="button" class="dq-logout">로그아웃</button>';
     host.querySelector('.dq-user').addEventListener('click', () => openNicknameDialog());
     host.querySelector('.dq-logout').addEventListener('click', logout);

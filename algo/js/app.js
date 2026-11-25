@@ -641,7 +641,9 @@ System.out.println("i = " + i);`],
     state.solved = new Set((saved.solved || []).filter((id) => BY_ID[id]));
     state.codes = saved.codes || {};
   }
-  loadProblem(saved && BY_ID[saved.lastId] ? saved.lastId : PROBLEMS[0].id);
+  const linked = location.hash.slice(1); // 허브의 "이어하기"가 #문제id 로 보내면 그 문제부터
+  if (location.hash) try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* 무시 */ }
+  loadProblem(BY_ID[linked] ? linked : saved && BY_ID[saved.lastId] ? saved.lastId : PROBLEMS[0].id);
   renderHeader();
   if (window.matchMedia('(max-width: 1100px)').matches) $('questListDetails').removeAttribute('open');
   if (location.protocol === 'file:') {

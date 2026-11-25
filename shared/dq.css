@@ -78,9 +78,16 @@
   .dqbar .dq-account { padding-left: 8px; gap: 6px; }
   .dqbar .dq-account .dq-uname { display: none; }
 }
-.dq-account .dq-sync:empty { display: none; }
-.dq-account .dq-sync { font-size: 13px; cursor: default; }
-.dq-account .dq-sync[data-state="error"] { filter: drop-shadow(0 0 4px rgba(255,123,114,.6)); }
+.dq-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* 저장 상태 점: 초록 = 저장됨, 파랑 = 저장 중, 빨강 = 실패 */
+.dq-account .dq-sync { display: none; width: 8px; height: 8px; border-radius: 50%; flex: none; cursor: default; position: relative; }
+.dq-account .dq-sync[data-state] { display: inline-block; }
+.dq-account .dq-sync[data-state="saved"] { background: #3fb950; }
+.dq-account .dq-sync[data-state="saving"] { background: #58a6ff; animation: dq-pulse 1s ease-in-out infinite; }
+.dq-account .dq-sync[data-state="error"] { background: #ff7b72; box-shadow: 0 0 0 3px rgba(255,123,114,.25); }
+@keyframes dq-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .dq-account .dq-sync[data-state="saving"] { animation: none; } }
+.dq-account .dq-avatar { width: 26px; height: 26px; border-radius: 50%; flex: none; display: inline-grid; place-items: center; background: #1f6feb; color: #f0f6fc; font-size: 12px; font-weight: 700; }
 /* 화면 아래 안내 (진행도 합침·저장 실패 등) */
 .dq-notice {
   position: fixed; left: 50%; bottom: 20px; z-index: 1000; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
@@ -94,7 +101,7 @@
   flex: none; font: inherit; font-weight: 700; color: #0d1117; background: #58a6ff; border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer;
 }
 .dq-notice button.dq-x { color: #8b949e; background: none; font-size: 18px; line-height: 1; padding: 0 4px; }
-.dq-account button.dq-user { font: inherit; color: var(--text, #c9d1d9); font-weight: 600; background: none; border: 0; padding: 2px 4px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.dq-account button.dq-user { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font: inherit; color: var(--text, #c9d1d9); font-weight: 600; background: none; border: 0; padding: 2px 6px 2px 2px; border-radius: 99px; cursor: pointer; white-space: nowrap; }
 .dq-account button.dq-user:hover, .dq-account button.dq-user:focus-visible { background: rgba(139,148,158,.18); }
 /* 닉네임 바꾸기 창 */
 .dq-modal {

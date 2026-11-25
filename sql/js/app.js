@@ -659,7 +659,10 @@
       state.SQL = SQL;
       el.loadingBanner.classList.add('hidden');
       el.problemBrief.classList.remove('hidden');
-      const startId = (saved && saved.lastProblemId && PROBLEMS_BY_ID[saved.lastProblemId]) ? saved.lastProblemId : PROBLEMS[0].id;
+      const linked = location.hash.slice(1); // 허브의 "이어하기"가 #문제id 로 보내면 그 문제부터
+      if (location.hash) try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* 무시 */ }
+      const startId = PROBLEMS_BY_ID[linked] ? linked
+        : (saved && saved.lastProblemId && PROBLEMS_BY_ID[saved.lastProblemId]) ? saved.lastProblemId : PROBLEMS[0].id;
       loadProblem(startId);
       renderHeader();
       if (window.matchMedia('(max-width: 700px)').matches) {
