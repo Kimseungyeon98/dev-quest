@@ -185,7 +185,7 @@
 
     async function init() {
       if (location.protocol === 'file:') return mode;
-      const me = await api('/api/me');
+      const me = await getMe();
       if (me.status === 401) { location.href = loginUrl(); return new Promise(() => {}); }
       if (!me.ok || !me.data || !me.data.username) return mode; // 백엔드 없이 연 경우
       const user = me.data.username;
@@ -322,17 +322,80 @@
     });
   }
 
-  /* 로그인한 아이디와 로그아웃 버튼. 백엔드 없이 파일·serve.js 로 열면(/api/me 가 없으면) 아무것도 안 보여요 */
+  /* 내 계정 정보 { username, nickname, defaultNickname } — 한 페이지에서 한 번만 불러요 */
+  let meCache = null;
+  function getMe() {
+    if (!meCache) meCache = location.protocol === 'file:' ? Promise.resolve({ ok: false, status: 0, data: null }) : api('/api/me');
+    return meCache;
+  }
+  function setMe(data) {
+    meCache = Promise.resolve({ ok: true, status: 200, data });
+    document.querySelectorAll('.dq-account .dq-uname').forEach((el) => { el.textContent = ' ' + data.nickname; });
+    document.querySelectorAll('.dq-account .dq-user').forEach((el) => { el.title = `닉네임 바꾸기 (로그인 아이디: ${data.username})`; });
+    window.dispatchEvent(new CustomEvent('dq:me', { detail: data })); // 허브 랭킹 등이 다시 그려요
+  }
+
+  /* 로그인한 사람(닉네임)과 로그아웃 버튼. 닉네임을 누르면 바꿀 수 있어요.
+   * 백엔드 없이 파일·serve.js 로 열면(/api/me 가 없으면) 아무것도 안 보여요 */
   async function mountAccount(host) {
     if (!host || location.protocol === 'file:') return;
     host.classList.add('dq-account');
-    const r = await api('/api/me');
+    const r = await getMe();
     if (!r.ok || !r.data || !r.data.username) return;
     host.innerHTML = '<span class="dq-sync" aria-live="polite"></span>'
-      + `<span class="dq-user" title="로그인한 아이디"><span aria-hidden="true">👤</span><span class="dq-uname"> ${esc(r.data.username)}</span></span>`
+      + `<button type="button" class="dq-user" title="닉네임 바꾸기 (로그인 아이디: ${esc(r.data.username)})"><span aria-hidden="true">👤</span><span class="dq-uname"> ${esc(r.data.nickname)}</span></button>`
       + '<button type="button" class="dq-logout">로그아웃</button>';
+    host.querySelector('.dq-user').addEventListener('click', () => openNicknameDialog());
     host.querySelector('.dq-logout').addEventListener('click', logout);
     if (sync.mode() === 'server') sync.setStatus('saved');
+  }
+
+  /* 닉네임 바꾸기 창. 저장하면 화면의 닉네임을 모두 바꾸고 'dq:me' 이벤트를 보내요 */
+  const NICKNAME_RE = /^[가-힣A-Za-z0-9_]{2,12}$/;
+  async function openNicknameDialog() {
+    const r = await getMe();
+    if (!r.ok || !r.data) return;
+    const opener = document.activeElement;
+    const wrap = document.createElement('div');
+    wrap.className = 'dq-modal';
+    wrap.innerHTML = `
+      <form class="dq-modal-box" role="dialog" aria-modal="true" aria-labelledby="dqNickTitle" novalidate>
+        <h2 id="dqNickTitle">닉네임 바꾸기</h2>
+        <p class="dq-modal-sub">랭킹에는 로그인 아이디 대신 닉네임이 보여요.</p>
+        <label for="dqNick">닉네임</label>
+        <input id="dqNick" type="text" maxlength="12" autocomplete="nickname" spellcheck="false" value="${esc(r.data.defaultNickname ? '' : r.data.nickname)}" placeholder="${esc(r.data.nickname)}" />
+        <p class="dq-modal-hint">한글·영문·숫자·_ 2~12자 · 다른 사람과 겹치지 않게</p>
+        <p class="dq-modal-error" role="alert"></p>
+        <div class="dq-modal-actions">
+          <button type="button" class="dq-btn-ghost" data-close>취소</button>
+          <button type="submit" class="dq-btn">저장</button>
+        </div>
+      </form>`;
+    document.body.appendChild(wrap);
+    const input = wrap.querySelector('#dqNick');
+    const error = wrap.querySelector('.dq-modal-error');
+    const submit = wrap.querySelector('button[type="submit"]');
+    input.focus();
+    function close() {
+      wrap.remove();
+      document.removeEventListener('keydown', onKey);
+      if (opener && opener.focus) opener.focus();
+    }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.hasAttribute('data-close')) close(); });
+    wrap.querySelector('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nickname = input.value.trim();
+      if (!NICKNAME_RE.test(nickname)) { error.textContent = '닉네임은 한글·영문·숫자·_ 2~12자예요.'; input.focus(); return; }
+      submit.disabled = true;
+      const res = await api('/api/me/nickname', { method: 'PUT', body: { nickname } });
+      submit.disabled = false;
+      if (!res.ok) { error.textContent = (res.data && res.data.error) || '저장하지 못했어요. 잠시 후 다시 시도해 주세요.'; input.focus(); return; }
+      setMe(res.data);
+      close();
+      notice(`닉네임을 "${res.data.nickname}"(으)로 바꿨어요.`);
+    });
   }
   async function logout() {
     await sync.beforeLogout();
@@ -394,5 +457,5 @@
       + (cat.desc ? `<div class="dq-cat-desc">${esc(cat.desc)}</div>` : '') + bodyHtml + '</details>';
   }
 
-  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout, sync, afterSync, merge, notice };
+  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout, sync, afterSync, merge, notice, getMe, openNicknameDialog };
 })();

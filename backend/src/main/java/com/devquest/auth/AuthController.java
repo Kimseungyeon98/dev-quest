@@ -2,6 +2,7 @@ package com.devquest.auth;
 
 import com.devquest.auth.AuthDtos.LoginRequest;
 import com.devquest.auth.AuthDtos.MeResponse;
+import com.devquest.auth.AuthDtos.NicknameRequest;
 import com.devquest.auth.AuthDtos.SignupRequest;
 import com.devquest.user.User;
 import com.devquest.user.UserService;
@@ -25,6 +26,7 @@ import org.springframework.security.web.authentication.session.SessionAuthentica
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -75,7 +77,7 @@ public class AuthController {
         UserDetails details = userDetailsService.loadUserByUsername(user.getUsername());
         Authentication auth = UsernamePasswordAuthenticationToken.authenticated(details, null, details.getAuthorities());
         startSession(auth, body.rememberMe(), request, response);
-        return new MeResponse(user.getUsername());
+        return me(user);
     }
 
     @PostMapping("/auth/login")
@@ -97,12 +99,21 @@ public class AuthController {
         }
         loginLimiter.reset(key);
         startSession(auth, body.rememberMe(), request, response);
-        return new MeResponse(auth.getName());
+        return me(userService.find(auth.getName()));
     }
 
     @GetMapping("/me")
     public MeResponse me(@AuthenticationPrincipal UserDetails user) {
-        return new MeResponse(user.getUsername());
+        return me(userService.find(user.getUsername()));
+    }
+
+    @PutMapping("/me/nickname")
+    public MeResponse changeNickname(@AuthenticationPrincipal UserDetails user, @Valid @RequestBody NicknameRequest body) {
+        return me(userService.changeNickname(user.getUsername(), body.nickname()));
+    }
+
+    private static MeResponse me(User user) {
+        return new MeResponse(user.getUsername(), user.getNickname(), UserService.isDefaultNickname(user.getNickname()));
     }
 
     /** 세션 ID 를 바꾸고 로그인 정보를 세션에 저장한 뒤, 원하면 자동 로그인 쿠키를 줘요 */

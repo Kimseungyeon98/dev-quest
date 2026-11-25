@@ -68,6 +68,38 @@
   .diffs { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
   .diffs b { font-variant-numeric: tabular-nums; }
 
+  /* 랭킹 */
+  .ranking { margin-top: 36px; padding: 20px; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; }
+  .ranking-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .ranking-head h2 { margin: 0; font-size: 18px; color: var(--strong); }
+  .ranking-head small { color: var(--muted); font-size: 12px; }
+  .rk-tabs { display: flex; gap: 6px; margin: 14px 0 12px; overflow-x: auto; padding-bottom: 2px; }
+  .rk-tabs button {
+    flex: none; font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 99px; cursor: pointer;
+    color: var(--muted); background: var(--track); border: 1px solid var(--panel-border); white-space: nowrap;
+  }
+  .rk-tabs button[aria-selected="true"] { color: #0d1117; background: var(--tab, #58a6ff); border-color: var(--tab, #58a6ff); }
+  .rk-tabs button:focus-visible { outline: 2px solid var(--strong); outline-offset: 2px; }
+  .rk-nudge { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px; font-size: 13px; background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.35); }
+  .rk-nudge button { font: inherit; font-weight: 700; font-size: 13px; padding: 5px 12px; border-radius: 6px; border: 0; cursor: pointer; color: #0d1117; background: #58a6ff; }
+  .rk-list { max-height: 520px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--panel-border); }
+  .rk-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .rk-table th { position: sticky; top: 0; z-index: 1; background: var(--track); color: var(--muted); font-size: 12px; font-weight: 600; text-align: left; padding: 8px 10px; }
+  .rk-table td { padding: 9px 10px; border-top: 1px solid var(--panel-border); }
+  .rk-table .num { text-align: right; white-space: nowrap; }
+  .rk-table .pos { width: 56px; text-align: center; font-weight: 800; color: var(--strong); }
+  .pos-badge { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 13px; font-weight: 800; color: #0d1117; }
+  .pos-1 { background: linear-gradient(135deg, #ffe17a, #e3b341); }
+  .pos-2 { background: linear-gradient(135deg, #f0f3f6, #aab4c0); }
+  .pos-3 { background: linear-gradient(135deg, #f0b27a, #cd7f32); }
+  .rk-table .who { font-weight: 600; color: var(--strong); word-break: break-all; }
+  .rk-table .tier { white-space: nowrap; font-weight: 700; font-size: 13px; }
+  .rk-table tr.me td { background: rgba(88,166,255,.12); }
+  .rk-table tr.gap td { text-align: center; color: var(--muted); padding: 2px; font-size: 12px; }
+  .me-badge { margin-left: 6px; font-size: 11px; font-weight: 800; color: #0d1117; background: #58a6ff; border-radius: 99px; padding: 1px 7px; vertical-align: 1px; }
+  .rk-empty { padding: 26px 12px; text-align: center; color: var(--muted); font-size: 14px; }
+  .rk-foot { margin-top: 10px; font-size: 12px; color: var(--muted); }
+
   .rules { margin-top: 36px; padding: 18px 20px; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; font-size: 13px; }
   .rules h3 { margin: 0 0 8px; font-size: 14px; color: var(--strong); }
   .rules p { margin: 4px 0; }
@@ -79,6 +111,10 @@
     .rank-badge { grid-auto-flow: column; justify-content: start; gap: 14px; text-align: left; }
     .rank-icon { font-size: 42px; }
     .tick span { font-size: 10px; }
+    .ranking { padding: 16px; }
+    .rk-table .lv, .rk-table .done { display: none; }
+    .rk-table td, .rk-table th { padding: 8px 6px; }
+    .rk-table .pos { width: 40px; }
   }
 </style>
 </head>
@@ -96,6 +132,16 @@
 
   <main class="grid" id="courseGrid"></main>
 
+  <section class="ranking" id="ranking" aria-labelledby="rankingTitle" hidden>
+    <div class="ranking-head">
+      <h2 id="rankingTitle">🏆 랭킹</h2>
+      <small>XP 가 같으면 먼저 도달한 사람이 위예요</small>
+    </div>
+    <div class="rk-tabs" id="rankingTabs" role="tablist" aria-label="랭킹 종류"></div>
+    <div id="rankingNudge"></div>
+    <div id="rankingBody" role="tabpanel" aria-live="polite"></div>
+  </section>
+
   <section class="rules" id="rules"></section>
 
   <footer>진행 기록은 계정에 저장돼서 어느 기기에서 접속하든 이어져요. 과목별 진행은 각 과목 안에서 초기화할 수 있어요.</footer>
@@ -108,7 +154,11 @@
   'use strict';
   const DQ = window.DevQuest;
   // 계정 진행도를 받아 온 뒤 다시 그려요 (처음엔 이 브라우저의 기록으로 먼저 그려요)
-  DQ.sync.ready().then(() => { render(); DQ.mountAccount(document.getElementById('account')); });
+  DQ.sync.ready().then((mode) => {
+    render();
+    DQ.mountAccount(document.getElementById('account'));
+    if (mode === 'server') initRanking();
+  });
   const courses = window.DEV_QUEST_COURSES;
   const ITEMS_KEY = 'devQuest:items';   // 마지막으로 읽은 퀘스트 목록 (다음 방문 때 먼저 보여 주기 위한 캐시)
   const esc = DQ.esc;
@@ -204,6 +254,78 @@
       if (items[c.id]) doneIdsOf(c).forEach((id) => allDone.push(c.id + ':' + id));
     });
     renderRank(DQ.stats(allItems, allDone), known);
+  }
+
+  /* ---------- 랭킹 (백엔드로 열었을 때만) ---------- */
+  const TAB_KEY = 'devQuest:rankingTab';
+  const rankingCache = {};
+  let rankingTab = 'all';
+  function rankingTabs() {
+    return [{ id: 'all', label: '🌐 전체', accent: '#58a6ff' }].concat(courses.map((c) => ({ id: c.id, label: c.icon + ' ' + c.name.replace(/ Quest$/, ''), accent: c.accent })));
+  }
+  function initRanking() {
+    try { const t = localStorage.getItem(TAB_KEY); if (t && rankingTabs().some((x) => x.id === t)) rankingTab = t; } catch (e) { /* 무시 */ }
+    document.getElementById('ranking').hidden = false;
+    const tabs = document.getElementById('rankingTabs');
+    tabs.innerHTML = rankingTabs().map((t) => `<button type="button" role="tab" data-tab="${esc(t.id)}" style="--tab:${esc(t.accent)}">${esc(t.label)}</button>`).join('');
+    tabs.addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) selectTab(b.dataset.tab); });
+    tabs.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const ids = rankingTabs().map((t) => t.id);
+      const next = ids[(ids.indexOf(rankingTab) + (e.key === 'ArrowRight' ? 1 : ids.length - 1)) % ids.length];
+      selectTab(next);
+      tabs.querySelector(`[data-tab="${next}"]`).focus();
+    });
+    // 닉네임을 바꾸면 랭킹을 새로 받아요
+    window.addEventListener('dq:me', () => { Object.keys(rankingCache).forEach((k) => delete rankingCache[k]); renderNudge(); loadRanking(); });
+    renderNudge();
+    selectTab(rankingTab);
+  }
+  function selectTab(id) {
+    rankingTab = id;
+    try { localStorage.setItem(TAB_KEY, id); } catch (e) { /* 무시 */ }
+    document.querySelectorAll('#rankingTabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
+    loadRanking();
+  }
+  async function renderNudge() {
+    const box = document.getElementById('rankingNudge');
+    const me = await DQ.getMe();
+    if (!me.ok || !me.data || !me.data.defaultNickname) { box.innerHTML = ''; return; }
+    box.innerHTML = `<div class="rk-nudge"><span>랭킹에는 닉네임이 보여요. 지금은 기본 닉네임 <b>${esc(me.data.nickname)}</b> 이에요.</span><button type="button">닉네임 정하기</button></div>`;
+    box.querySelector('button').addEventListener('click', () => DQ.openNicknameDialog());
+  }
+  async function loadRanking() {
+    const id = rankingTab;
+    const body = document.getElementById('rankingBody');
+    if (!rankingCache[id]) {
+      body.innerHTML = '<div class="rk-empty">랭킹을 불러오는 중…</div>';
+      const r = await DQ.api('/api/ranking?course=' + encodeURIComponent(id) + '&limit=50');
+      if (!r.ok) { if (rankingTab === id) body.innerHTML = `<div class="rk-empty">${esc((r.data && r.data.error) || '랭킹을 불러오지 못했어요.')}</div>`; return; }
+      rankingCache[id] = r.data;
+    }
+    if (rankingTab === id) renderRanking(rankingCache[id]);
+  }
+  function rowHtml(e, data) {
+    const t = DQ.tierFor(data.maxXp ? e.xp / data.maxXp : 0).tier;
+    const pos = e.rank <= 3 ? `<span class="pos-badge pos-${e.rank}" aria-label="${e.rank}위">${e.rank}</span>` : e.rank;
+    return `<tr${e.me ? ' class="me"' : ''}><td class="pos">${pos}</td>`
+      + `<td class="who">${esc(e.nickname)}${e.me ? '<span class="me-badge">나</span>' : ''}</td>`
+      + `<td class="tier" style="color:${t.color}">${t.icon} ${esc(t.name)}</td>`
+      + `<td class="num lv">Lv.${DQ.levelInfo(e.xp).level}</td>`
+      + `<td class="num">${e.xp.toLocaleString()} XP</td>`
+      + `<td class="num done">${e.done} / ${data.totalQuests}</td></tr>`;
+  }
+  function renderRanking(data) {
+    const body = document.getElementById('rankingBody');
+    if (!data.entries.length) {
+      body.innerHTML = '<div class="rk-empty">아직 랭킹에 오른 사람이 없어요. 첫 퀘스트를 깨면 1등이에요! 🚀</div>';
+      return;
+    }
+    let rows = data.entries.map((e) => rowHtml(e, data)).join('');
+    const listed = data.me && data.entries.some((e) => e.me);
+    if (data.me && !listed) rows += '<tr class="gap"><td colspan="6">⋯</td></tr>' + rowHtml(data.me, data);
+    body.innerHTML = `<div class="rk-list"><table class="rk-table"><thead><tr><th class="pos">순위</th><th>닉네임</th><th>티어</th><th class="num lv">레벨</th><th class="num">XP</th><th class="num done">완료</th></tr></thead><tbody>${rows}</tbody></table></div>`
+      + `<p class="rk-foot">${data.players.toLocaleString()}명 참여 · ${data.me ? `내 순위 <b>${data.me.rank}위</b>` : '아직 내 순위가 없어요 — 퀘스트를 깨면 올라가요'}</p>`;
   }
 
   renderRules();

@@ -22,17 +22,26 @@ class SchemaTest {
 
     @Test
     void 아이디는_대소문자를_구분하지_않고_하나만() {
-        jdbc.update("insert into users (username, password_hash) values ('DevKim', 'x')");
-        assertThatThrownBy(() -> jdbc.update("insert into users (username, password_hash) values ('devkim', 'x')"))
+        jdbc.update("insert into users (username, password_hash, nickname) values ('DevKim', 'x', 'n1')");
+        assertThatThrownBy(() -> jdbc.update("insert into users (username, password_hash, nickname) values ('devkim', 'x', 'n2')"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void 닉네임도_대소문자를_구분하지_않고_하나만() {
+        jdbc.update("insert into users (username, password_hash, nickname) values ('nick_a', 'x', 'CodeKing')");
+        assertThatThrownBy(() -> jdbc.update("insert into users (username, password_hash, nickname) values ('nick_b', 'x', 'codeking')"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
     void 계정을_지우면_진행도도_지워짐() {
         Long id = jdbc.queryForObject(
-                "insert into users (username, password_hash) values ('tester', 'x') returning id", Long.class);
+                "insert into users (username, password_hash, nickname) values ('tester', 'x', 'tester_n') returning id", Long.class);
         jdbc.update("insert into progress (user_id, course_id, data) values (?, 'algo', '{\"solved\":[]}'::jsonb)", id);
+        jdbc.update("insert into course_scores (user_id, course_id, xp) values (?, 'algo', 100)", id);
         jdbc.update("delete from users where id = ?", id);
         assertThat(jdbc.queryForObject("select count(*) from progress where user_id = ?", Integer.class, id)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from course_scores where user_id = ?", Integer.class, id)).isZero();
     }
 }

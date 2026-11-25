@@ -6,7 +6,9 @@ import com.devquest.progress.ProgressService.BadProgressException;
 import com.devquest.progress.ProgressService.ProgressTooLargeException;
 import com.devquest.progress.ProgressService.UnknownCourseException;
 import com.devquest.progress.ProgressService.VersionConflictException;
+import com.devquest.user.UserService.DuplicateNicknameException;
 import com.devquest.user.UserService.DuplicateUsernameException;
+import com.devquest.user.UserService.InvalidNicknameException;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -37,6 +39,16 @@ public class ApiExceptionHandler {
     ResponseEntity<Map<String, String>> duplicate() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "이미 사용 중인 아이디예요.", "field", "username"));
+    }
+
+    @ExceptionHandler(DuplicateNicknameException.class)
+    ResponseEntity<Map<String, String>> duplicateNickname(DuplicateNicknameException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage(), "field", "nickname"));
+    }
+
+    @ExceptionHandler(InvalidNicknameException.class)
+    ResponseEntity<Map<String, String>> invalidNickname(InvalidNicknameException e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage(), "field", "nickname"));
     }
 
     @ExceptionHandler(BadLoginException.class)

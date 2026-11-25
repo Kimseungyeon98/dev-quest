@@ -29,6 +29,10 @@ public final class AuthDtos {
             boolean rememberMe) {
     }
 
-    public record MeResponse(String username) {
+    /** username 은 로그인 아이디(본인에게만), nickname 은 남에게 보이는 이름. defaultNickname 이면 아직 기본 닉네임이에요 */
+    public record MeResponse(String username, String nickname, boolean defaultNickname) {
+    }
+
+    public record NicknameRequest(@NotBlank(message = "닉네임을 입력해 주세요.") @Size(max = 40) String nickname) {
     }
 }

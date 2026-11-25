@@ -26,6 +26,9 @@ jobs:
         run: |
           for f in $(git ls-files '*.js'); do node --check "$f"; done
 
+      - name: 퀘스트 카탈로그(shared/quests.json)가 최신인지
+        run: node shared/tools/build-quest-catalog.js --check
+
       - name: Git Quest 시나리오 검증
         run: node git/tools/validate-scenarios.js
 

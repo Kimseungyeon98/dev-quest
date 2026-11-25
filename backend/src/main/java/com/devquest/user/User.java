@@ -24,6 +24,10 @@ public class User {
     @Column(name = "password_hash", length = 100)
     private String passwordHash;
 
+    /** 다른 사람에게 보이는 이름 (랭킹 등). 대소문자를 구분하지 않고 하나만 */
+    @Column(nullable = false, length = 20)
+    private String nickname;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -33,9 +37,10 @@ public class User {
     protected User() {
     }
 
-    public User(String username, String passwordHash) {
+    public User(String username, String passwordHash, String nickname) {
         this.username = username;
         this.passwordHash = passwordHash;
+        this.nickname = nickname;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
     }
@@ -54,5 +59,14 @@ public class User {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void changeNickname(String nickname) {
+        this.nickname = nickname;
+        this.updatedAt = Instant.now();
     }
 }

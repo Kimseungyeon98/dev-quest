@@ -10,6 +10,7 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -30,14 +31,15 @@ public class ProgressService {
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
     private final Set<String> courses;
+    private final ScoreService scores;
     private final int maxBytes;
 
-    public ProgressService(JdbcTemplate jdbc, ObjectMapper json,
-            @Value("${devquest.progress.courses}") Set<String> courses,
+    public ProgressService(JdbcTemplate jdbc, ObjectMapper json, QuestCatalog catalog, ScoreService scores,
             @Value("${devquest.progress.max-bytes}") int maxBytes) {
         this.jdbc = jdbc;
         this.json = json;
-        this.courses = Set.copyOf(courses);
+        this.courses = Set.copyOf(catalog.courseIds()); // 저장할 수 있는 과목 = 퀘스트 카탈로그의 과목
+        this.scores = scores;
         this.maxBytes = maxBytes;
     }
 
@@ -62,6 +64,8 @@ public class ProgressService {
         return rows.isEmpty() ? CourseProgress.empty() : rows.getFirst();
     }
 
+    /** 진행도와 랭킹 점수를 한 트랜잭션으로 저장해요 */
+    @Transactional
     public CourseProgress save(long userId, String course, JsonNode data, long expectedVersion) {
         checkCourse(course);
         if (data == null || !data.isObject()) throw new BadProgressException("진행도(data)는 JSON 객체여야 해요.");
@@ -81,7 +85,9 @@ public class ProgressService {
                         returning data::text as data, version, updated_at""",
                         (rs, i) -> map(rs), text, userId, course, expectedVersion);
         if (saved.isEmpty()) throw new VersionConflictException(get(userId, course));
-        return saved.getFirst();
+        CourseProgress result = saved.getFirst();
+        scores.update(userId, course, result.data(), result.updatedAt());
+        return result;
     }
 
     private CourseProgress map(ResultSet rs) throws SQLException {
