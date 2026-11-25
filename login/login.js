@@ -108,5 +108,9 @@
     else if (mode !== 'login') setMode('login');
   }
   window.addEventListener('hashchange', modeFromHash);
+  if (new URLSearchParams(location.search).get('bye')) {
+    DQ.notice('탈퇴했어요. 그동안 Dev Quest 를 이용해 주셔서 고마워요.');
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* 무시 */ }
+  }
   if (location.hash) modeFromHash(); else $('username').focus();
 })();

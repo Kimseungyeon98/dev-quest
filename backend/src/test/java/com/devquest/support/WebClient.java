@@ -50,6 +50,15 @@ public class WebClient {
         return http.send(req.build(), HttpResponse.BodyHandlers.ofString());
     }
 
+    public HttpResponse<String> delete(String path, String json) throws Exception {
+        if (cookie("XSRF-TOKEN").isEmpty()) get("/login/");
+        HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(base + path))
+                .header("Content-Type", "application/json")
+                .method("DELETE", HttpRequest.BodyPublishers.ofString(json));
+        cookie("XSRF-TOKEN").ifPresent(t -> req.header("X-XSRF-TOKEN", t));
+        return http.send(req.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
     public Optional<String> cookie(String name) {
         return cookies.getCookieStore().getCookies().stream()
                 .filter(c -> c.getName().equals(name) && !c.hasExpired())

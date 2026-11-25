@@ -404,13 +404,19 @@
       if (mode !== 'server' || !meta) return;
       const pending = Object.keys(meta.courses).filter((id) => meta.courses[id].dirty);
       await Promise.all(pending.map(push));
+      clearLocal();
+    }
+
+    /* 이 브라우저의 진행도 기록 지우기 (로그아웃·탈퇴) */
+    function clearLocal() {
+      Object.keys(timers).forEach((id) => { clearTimeout(timers[id]); timers[id] = null; });
       courses().forEach((c) => writeLocal(c, null));
       try { localStorage.removeItem(ACTIVITY_KEY); } catch (e) { /* 무시 */ }
       // 다음 로그인 때 "로그인 전 기록"으로 오해하지 않게, 기록이 비어 있다는 표시만 남겨요
       try { localStorage.setItem(META_KEY, JSON.stringify({ user: null, courses: {} })); } catch (e) { /* 무시 */ }
     }
 
-    return { ready, changed, beforeLogout, setStatus, activity, mode: () => mode, merge };
+    return { ready, changed, beforeLogout, clearLocal, setStatus, activity, mode: () => mode, merge };
   })();
 
   /* 진행도를 계정과 맞춘 뒤에 과목 앱 스크립트를 실행해요 */
@@ -559,7 +565,20 @@
         <input id="dqRcPw" type="password" autocomplete="current-password" maxlength="64" />
         <p class="dq-modal-error" role="alert"></p>
         <div class="dq-modal-actions"><button type="submit" class="dq-btn">${me.hasRecoveryCode ? '새로 만들기' : '복구 코드 만들기'}</button></div>
-      </form>`, { wide: true, labelledBy: 'dqAccTitle' });
+      </form>
+
+      <details class="dq-sec dq-danger" data-sec="delete">
+        <summary><h3>회원 탈퇴</h3></summary>
+        <form novalidate>
+          <p class="dq-modal-hint">계정과 모든 과목의 진행도·랭킹 기록이 바로 지워지고 되돌릴 수 없어요. 같은 아이디로 다시 가입할 수는 있어요.</p>
+          <label for="dqDelPw">비밀번호 확인</label>
+          <input id="dqDelPw" type="password" autocomplete="current-password" maxlength="64" />
+          <label for="dqDelOk">확인을 위해 <b>탈퇴합니다</b> 라고 입력해 주세요</label>
+          <input id="dqDelOk" type="text" autocomplete="off" maxlength="10" />
+          <p class="dq-modal-error" role="alert"></p>
+          <div class="dq-modal-actions"><button type="submit" class="dq-btn dq-btn-danger">탈퇴하기</button></div>
+        </form>
+      </details>`, { wide: true, labelledBy: 'dqAccTitle' });
     const box = m.box;
     const sec = (name) => box.querySelector(`[data-sec="${name}"]`);
     function fail(form, res, fallback) {
@@ -612,6 +631,20 @@
       setMe(rest);
       showRecoveryCode(recoveryCode, { username: rest.username, title: '새 복구 코드를 저장해 두세요' });
     });
+    box.querySelector('[data-sec="delete"] form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget, err = form.querySelector('.dq-modal-error');
+      const password = form.querySelector('#dqDelPw').value;
+      if (!password) { err.textContent = '비밀번호를 입력해 주세요.'; form.querySelector('#dqDelPw').focus(); return; }
+      if (form.querySelector('#dqDelOk').value.trim() !== '탈퇴합니다') { err.textContent = '"탈퇴합니다" 라고 정확히 입력해 주세요.'; form.querySelector('#dqDelOk').focus(); return; }
+      const btn = form.querySelector('button'); btn.disabled = true;
+      const res = await api('/api/me', { method: 'DELETE', body: { password } });
+      btn.disabled = false;
+      if (!res.ok) { err.textContent = (res.data && res.data.error) || '탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요.'; form.querySelector('#dqDelPw').focus(); return; }
+      sync.clearLocal();
+      location.href = '/login/?bye=1';
+    });
+    if (section === 'delete') box.querySelector('[data-sec="delete"]').open = true;
   }
   /* 예전 이름 (허브의 "닉네임 정하기" 등에서 불러요) */
   function openNicknameDialog() { return openAccountDialog('nickname'); }

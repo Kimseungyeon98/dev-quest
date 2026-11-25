@@ -31,6 +31,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -160,6 +161,27 @@ public class AuthController {
         }
         loginLimiter.reset(key);
         return me(userService.find(user.getUsername()), code);
+    }
+
+    /** 회원 탈퇴: 비밀번호를 확인하고 계정·진행도·랭킹 점수를 지운 뒤, 모든 기기에서 로그아웃해요 */
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAccount(@AuthenticationPrincipal UserDetails user, @Valid @RequestBody PasswordConfirmRequest body,
+            HttpServletRequest request, HttpServletResponse response) {
+        String key = "password:" + user.getUsername() + "|" + request.getRemoteAddr();
+        guard(loginLimiter, key);
+        try {
+            accounts.deleteAccount(user.getUsername(), body.password());
+        } catch (AccountException e) {
+            loginLimiter.record(key);
+            throw e;
+        }
+        loginLimiter.reset(key);
+        accounts.endOtherLogins(user.getUsername(), null); // 이 기기를 포함한 모든 세션·자동 로그인 토큰
+        HttpSession session = request.getSession(false);
+        if (session != null) session.invalidate();
+        contextHolder.clearContext();
+        rememberMe.logout(request, response, null); // 자동 로그인 쿠키 지우기
     }
 
     /** 비밀번호를 잊었을 때: 아이디 + 복구 코드로 새 비밀번호를 정하고 바로 로그인. 다른 기기 로그인은 모두 끊고 새 복구 코드를 줘요 */

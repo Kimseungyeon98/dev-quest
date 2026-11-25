@@ -185,3 +185,12 @@ button [data-icon], summary [data-icon], .dq-label [data-icon] { margin-right: 6
 /* 복구 코드가 없으면 아바타에 주황 점 */
 .dq-account .dq-user.needs-rc .dq-avatar { position: relative; }
 .dq-account .dq-user.needs-rc .dq-avatar::after { content: ""; position: absolute; top: -1px; right: -1px; width: 8px; height: 8px; border-radius: 50%; background: #ffa657; box-shadow: 0 0 0 2px #0d1117; }
+
+/* 회원 탈퇴 (접혀 있는 위험 영역) */
+.dq-danger > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.dq-danger > summary::-webkit-details-marker { display: none; }
+.dq-danger > summary::after { content: "펼치기"; margin-left: auto; font-size: 12px; color: #8b949e; }
+.dq-danger[open] > summary::after { content: "접기"; }
+.dq-danger > summary h3 { margin: 0; color: #ff7b72; }
+.dq-danger form { margin-top: 10px; }
+.dq-btn-danger { background: #f85149; color: #fff; }

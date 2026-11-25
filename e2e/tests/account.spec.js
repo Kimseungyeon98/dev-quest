@@ -83,3 +83,23 @@ test('복구 코드 새로 만들기 (비밀번호 확인)', async ({ page }) =>
   await page.click('#dqRcDone');
   await expect(page.locator('.dq-modal')).toHaveCount(0);
 });
+
+test('회원 탈퇴: 확인 문구까지 넣어야 지워지고, 이 브라우저 기록도 지워져요', async ({ page }) => {
+  const name = uniqueName('ac');
+  await signup(page, name, { next: '/sql/' });
+  await expect(page.locator('.dq-sync')).toHaveAttribute('data-state', 'saved');
+  await page.click('.dqbar .dq-user');
+  await page.click('[data-sec="delete"] summary');
+  await page.fill('#dqDelPw', PASSWORD);
+  await page.fill('#dqDelOk', '탈퇴');
+  await page.click('[data-sec="delete"] button[type="submit"]');
+  await expect(page.locator('[data-sec="delete"] .dq-modal-error')).toContainText('탈퇴합니다');
+  await page.fill('#dqDelOk', '탈퇴합니다');
+  await Promise.all([page.waitForURL('**/login/'), page.click('[data-sec="delete"] button[type="submit"]')]);
+  await expect(page.locator('#dq-notice')).toContainText('탈퇴했어요');
+  expect(await page.evaluate(() => localStorage.getItem('sqlQueryLabProgress_v1'))).toBeNull();
+  await page.fill('#username', name);
+  await page.fill('#password', PASSWORD);
+  await page.click('#submit');
+  await expect(page.locator('#error')).toContainText('맞지 않아요');
+});

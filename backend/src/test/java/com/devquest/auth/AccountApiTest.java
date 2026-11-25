@@ -182,6 +182,35 @@ class AccountApiTest {
         assertThat(anon.post("/api/auth/recover", body("username", name, "recoveryCode", code, "newPassword", "x1234567")).statusCode()).isEqualTo(429);
     }
 
+    @Test
+    void 회원_탈퇴하면_계정과_진행도가_지워지고_모든_기기에서_로그아웃() throws Exception {
+        WebClient web = new WebClient(port);
+        String name = newName();
+        signup(web, name, true);
+        Long id = jdbc.queryForObject("select id from users where username = ?", Long.class, name);
+        assertThat(web.put("/api/progress/sql", "{\"data\":{\"solved\":[\"basics-vip\"]},\"version\":0}").statusCode()).isEqualTo(200);
+        WebClient otherDevice = loggedIn(name, PW, true);
+        String token = otherDevice.cookie("remember-me").orElseThrow();
+
+        assertThat(web.delete("/api/me", body("password", "wrong999")).statusCode()).isEqualTo(401);
+        assertThat(web.get("/api/me").statusCode()).as("틀리면 그대로").isEqualTo(200);
+
+        var res = web.delete("/api/me", body("password", PW));
+        assertThat(res.statusCode()).as(res.body()).isEqualTo(204);
+        assertThat(res.headers().allValues("Set-Cookie")).as("자동 로그인 쿠키 지움").anyMatch(c -> c.startsWith("remember-me=;") && (c.contains("Max-Age=0") || c.contains("1970")));
+        assertThat(web.get("/api/me").statusCode()).isEqualTo(401);
+        assertThat(otherDevice.get("/api/me").statusCode()).isEqualTo(401);
+        WebClient stolen = new WebClient(port);
+        stolen.putCookie("remember-me", token);
+        assertThat(stolen.get("/api/me").statusCode()).isEqualTo(401);
+
+        for (String table : new String[] {"users where id = ?", "progress where user_id = ?", "course_scores where user_id = ?"}) {
+            assertThat(jdbc.queryForObject("select count(*) from " + table, Integer.class, id)).as(table).isZero();
+        }
+        assertThat(jdbc.queryForObject("select count(*) from persistent_logins where username = ?", Integer.class, name)).isZero();
+        assertThat(new WebClient(port).post("/api/auth/signup", json(name, PW, false)).statusCode()).as("같은 아이디로 다시 가입 가능").isEqualTo(201);
+    }
+
     private HttpResponse<String> admin(String username, String token) throws Exception {
         HttpRequest.Builder req = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/admin/users/" + username + "/reset-password"))
                 .POST(HttpRequest.BodyPublishers.noBody());

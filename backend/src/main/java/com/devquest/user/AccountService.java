@@ -96,6 +96,15 @@ public class AccountService {
         return temp;
     }
 
+    /** 회원 탈퇴: 비밀번호를 확인하고 계정을 지워요. 진행도·랭킹 점수는 DB 연쇄 삭제(on delete cascade)로 함께 지워져요 */
+    @Transactional
+    public void deleteAccount(String username, String password) {
+        User user = userService.find(username);
+        checkPassword(user, password);
+        users.delete(user);
+        users.flush();
+    }
+
     /** 이 계정의 다른 세션과 자동 로그인 토큰을 모두 끊어요. keepSessionId 세션(지금 이 기기)만 남겨요 */
     public int endOtherLogins(String username, String keepSessionId) {
         rememberMeTokens.removeUserTokens(username);
