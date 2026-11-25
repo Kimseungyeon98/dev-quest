@@ -35,6 +35,10 @@ test('가장 최근 과목의 마지막 퀘스트를 이어하고, 과목 화면
 
   // 알고리즘: 마지막 문제를 이미 풀었으면 다음 안 푼 문제
   await page.goto('/');
+  // SQL 화면에서 남은 저장(떠날 때 보내는 것 포함)이 끝난 뒤에 알고리즘을 저장해야 "가장 최근"이 알고리즘이에요
+  await page.evaluate(() => window.DevQuest.sync.ready());
+  await expect(page.locator('.dq-sync').first()).toHaveAttribute('data-state', 'saved');
+  await page.waitForTimeout(1500);
   await api(page, '/api/progress/algo', { method: 'PUT', body: { data: { solved: algo.slice(0, 3), lastId: algo[2], codes: {} }, version: 1 } });
   await page.reload();
   await expect(cta).toHaveAttribute('href', 'algo/index.html#' + algo[3]);
