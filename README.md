@@ -107,7 +107,7 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 
 ### 퀘스트 카탈로그 (`shared/quests.json`)
 
-서버가 XP 를 계산할 수 있도록 과목별 퀘스트 id·난이도와 XP 규칙을 담은 자동 생성 파일이에요. 허브와 같은 방법(`courses.js` 의 `scripts` → `items`)으로 만들고, XP 규칙은 `shared/dq.js` 에서 가져와요. **퀘스트를 추가·수정·삭제하면 다시 만들어 커밋해 주세요.** CI 가 최신인지 확인해요.
+과목별 퀘스트 id·난이도·제목(순서대로)과 XP 규칙을 담은 자동 생성 파일(약 20KB)이에요. 서버는 이 파일로 XP 를 계산하고, **허브는 과목 데이터 파일(모두 합쳐 약 380KB) 대신 이 파일 하나만 받아서** 퀘스트 목록·이어하기·진행률을 그려요. `courses.js` 의 `scripts` → `items` 로 만들고, XP 규칙은 `shared/dq.js` 에서 가져와요. **퀘스트를 추가·수정·삭제하면 다시 만들어 커밋해 주세요.** CI 가 최신인지 확인해요.
 
 ```bash
 node shared/tools/build-quest-catalog.js

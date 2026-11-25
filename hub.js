@@ -11,19 +11,12 @@
   function readJson(key, fallback) {
     try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (e) { return fallback; }
   }
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const el = document.createElement('script');
-      el.src = src; el.onload = resolve; el.onerror = () => reject(new Error(src));
-      document.head.appendChild(el);
-    });
-  }
-  // 과목의 데이터 파일을 불러와 퀘스트 목록을 직접 만든다 (실패하면 null)
-  async function loadItems(course) {
+  // 퀘스트 목록은 카탈로그(shared/quests.json, 약 20KB) 하나로 받아요. 과목 데이터 파일(모두 수백 KB)은 과목 화면에서만 읽어요.
+  async function loadCatalog() {
     try {
-      for (const src of course.scripts()) await loadScript(src);
-      if (course.scriptsAfter) for (const src of course.scriptsAfter()) await loadScript(src);
-      return course.items();
+      const res = await fetch('shared/quests.json', { credentials: 'same-origin' });
+      if (!res.ok) return null;
+      return await res.json();
     } catch (e) { return null; }
   }
   const savedOf = (c) => readJson(c.storageKey, null);
@@ -352,10 +345,12 @@
       });
     }
   });
-  Promise.all(courses.map(async (c) => {
-    const list = await loadItems(c);
-    if (list) items[c.id] = list.map((x) => [x.id, DQ.diffKey(x.difficulty), x.title || '']);
-  })).then(() => {
+  loadCatalog().then((catalog) => {
+    if (!catalog || !catalog.courses) return;
+    courses.forEach((c) => {
+      const q = catalog.courses[c.id];
+      if (q) items[c.id] = Object.keys(q.quests).map((id) => [id, q.quests[id], (q.titles && q.titles[id]) || '']);
+    });
     try { localStorage.setItem(ITEMS_KEY, JSON.stringify(items)); } catch (e) { /* 무시 */ }
     render();
   });

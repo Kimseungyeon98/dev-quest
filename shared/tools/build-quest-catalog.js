@@ -1,6 +1,8 @@
 /* 퀘스트 카탈로그 만들기: node shared/tools/build-quest-catalog.js [--check]
- * 서버(랭킹)가 XP 를 계산할 수 있도록 과목별 퀘스트 id·난이도와 XP 규칙을 shared/quests.json 으로 뽑아요.
- * 허브와 같은 방법(courses.js 의 scripts → items)으로 목록을 만들고, XP 규칙은 shared/dq.js 에서 가져와요.
+ * 과목별 퀘스트 id·난이도·제목(순서대로)과 XP 규칙을 shared/quests.json 으로 뽑아요.
+ *  - 서버(랭킹)는 이 파일로 XP 를 계산하고
+ *  - 허브는 과목 데이터 파일(수백 KB) 대신 이 파일 하나만 받아서 퀘스트 목록을 그려요
+ * courses.js 의 scripts → items 로 목록을 만들고, XP 규칙은 shared/dq.js 에서 가져와요.
  * 퀘스트를 추가·수정하면 다시 실행해 주세요. --check 는 파일이 최신인지 확인만 해요 (CI 용). */
 const fs = require('fs');
 const path = require('path');
@@ -26,11 +28,13 @@ for (const c of globalThis.DEV_QUEST_COURSES) {
   if (c.scriptsAfter) c.scriptsAfter().forEach(load);
   if (!c.doneField) throw new Error(`courses.js 의 ${c.id} 에 doneField 가 없어요`);
   const quests = {};
+  const titles = {};
   for (const it of c.items()) {
     if (quests[it.id]) throw new Error(`${c.id} 에 같은 퀘스트 id 가 두 번 있어요: ${it.id}`);
     quests[it.id] = DQ.diffKey(it.difficulty);
+    titles[it.id] = it.title || '';
   }
-  catalog.courses[c.id] = { name: c.name, icon: c.icon, doneField: c.doneField, quests };
+  catalog.courses[c.id] = { name: c.name, icon: c.icon, doneField: c.doneField, quests, titles };
 }
 
 const text = JSON.stringify(catalog, null, 1) + '\n';

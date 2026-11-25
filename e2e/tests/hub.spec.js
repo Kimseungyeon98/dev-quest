@@ -1,12 +1,19 @@
 // 메인(허브): 이어하기 · 내 상태 · 과목 · 랭킹
 const { test, expect } = require('@playwright/test');
-const { uniqueName, isolate, signup, api, questIds } = require('./helpers');
+const { uniqueName, isolate, signup, api, questIds, catalog } = require('./helpers');
 
 test.beforeEach(async ({ context, baseURL }) => { await isolate(context, baseURL); });
 
 test('처음 온 사람에게는 첫 퀘스트를 추천해요', async ({ page }) => {
+  const loaded = [];
+  page.on('request', (r) => loaded.push(new URL(r.url()).pathname));
   await signup(page, uniqueName('hb'));
   await expect(page.locator('#hero .eyebrow')).toHaveText('첫 퀘스트 추천');
+  await expect(page.locator('#hero .hero-title')).toHaveText(catalog.courses.linux.titles[questIds('linux')[0]]); // 제목도 카탈로그에서
+  await expect(page.locator('.tile').first()).toContainText('0 / ' + questIds('linux').length);
+  // 허브는 퀘스트 카탈로그만 받고, 과목 데이터 파일(수백 KB)은 받지 않아요
+  expect(loaded).toContain('/shared/quests.json');
+  expect(loaded.filter((p) => /\/(linux|sql|git|algo)\/js\//.test(p))).toEqual([]);
   await expect(page.locator('#hero .btn-primary')).toHaveAttribute('href', 'linux/index.html#' + questIds('linux')[0]);
 });
 

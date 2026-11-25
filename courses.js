@@ -5,8 +5,9 @@
  * - lastId(saved, items): 그 과목에서 마지막으로 열었던 퀘스트 id (허브의 "이어하기"가 써요, 없으면 null)
  * - short / iconPath: 허브에 쓰는 짧은 이름과 선 아이콘(24×24 SVG path)
  * 과목 화면은 주소 끝의 #퀘스트id 로 그 퀘스트를 바로 열어요
- * - scripts / items(): 허브가 과목의 데이터 파일만 불러와 퀘스트 목록({id, difficulty})을 직접 만든다.
- *   (퀘스트를 추가해도 이 파일의 숫자를 고칠 필요가 없어요) */
+ * - scripts / items(): 과목의 데이터 파일에서 퀘스트 목록({id, difficulty, title})을 만든다.
+ *   퀘스트 카탈로그 생성기(shared/tools/build-quest-catalog.js)가 이걸로 shared/quests.json 을 만들고,
+ *   허브와 서버는 그 파일만 읽어요. (퀘스트를 추가해도 이 파일의 숫자를 고칠 필요가 없어요) */
 (function () {
   'use strict';
 
