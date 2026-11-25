@@ -230,7 +230,7 @@
   })();
 
   // 서버가 깨어나는 동안에도 화면은 바로 뜨게: 사이트 파일을 캐시해 두는 서비스 워커 (/sw.js)
-  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
   }
 
