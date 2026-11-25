@@ -11,6 +11,12 @@ spring:
       # 모든 테이블을 이 스키마에 둬요. 다른 앱(예: 같은 Railway Postgres 를 쓰는 luck-lounge)의
       # public 스키마 테이블과 이름이 겹치지 않게요. 연결할 때 search_path 를 이 스키마로 맞춰요.
       schema: ${DB_SCHEMA:devquest}
+      # Railway Serverless(안 쓸 때 잠들기)는 몇 분 동안 바깥으로 나가는 트래픽이 없어야 잠들어요. DB 연결도 트래픽이라
+      # 쉬는 연결은 1분 뒤 모두 닫고(minimum-idle 0), 연결 유지용 ping(keepalive)도 꺼요.
+      minimum-idle: 0
+      idle-timeout: 60000
+      keepalive-time: 0
+      maximum-pool-size: 5
   jpa:
     open-in-view: false
     hibernate:
@@ -27,6 +33,7 @@ spring:
     timeout: 8h # 자동 로그인을 안 골라도 8시간 동안 아무것도 안 하면 로그아웃
     jdbc:
       initialize-schema: never # 세션 테이블은 Flyway(V2)가 만들어요
+      cleanup-cron: "0 23 * * * *" # 만료 세션 정리 (기본은 매분 DB 조회라 서비스가 잠들지 못해서 1시간마다)
   web:
     resources:
       cache:
