@@ -83,7 +83,7 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 
 ### 완료 기록 · 연속 학습일
 
-- 진행도를 저장할 때 서버가 이전 기록과 비교해 **새로 끝낸 퀘스트를 완료 시각과 함께** `quest_completions` 에 남기고, 초기화로 빠진 퀘스트는 지워요 (과목 앱은 그대로).
+- 진행도를 저장할 때 서버가 이전 기록과 비교해 **새로 끝낸 퀘스트를 완료 시각과 함께** `quest_completions` 에 남기고, 진행 기록에서 빠진 퀘스트는 지워요 (과목 앱은 그대로).
 - 이 기능 전에 끝낸 퀘스트는 시각을 추정해서(Git 은 앱이 저장한 시각, 나머지는 진행도 저장 시각) `live = false` 로 채워요. 연속 학습일·주간 랭킹에서는 빠져요.
 - 허브의 **내 상태**에 연속 학습일(오늘 아직이면 어제까지 이어진 날 수, 최고 기록), 이번 주 월~일 7칸, 이번 주 XP 가 보여요. 하루·한 주는 `devquest.timezone`(기본 `Asia/Seoul`) 기준이고, 한 주는 월요일부터예요.
 - API: `GET /api/me/activity` → `{ streak, bestStreak, activeToday, totalDays, today, week: { start, xp, done, days: [{ date, done, xp }] } }`
@@ -159,6 +159,14 @@ dev-quest 는 모든 테이블을 PostgreSQL 의 **`devquest` 스키마**에 만
 - `main` 에 푸시하면 Railway 가 자동으로 다시 빌드·배포해요. DB 스키마 변경은 Flyway 마이그레이션 파일만 추가하면 배포 때 적용돼요.
 - 로그는 앱 서비스의 **Deployments** → 배포 → **View Logs** 에서 봐요.
 - `PORT` 는 Railway 가 넣어 줘요. 나머지 설정(`devquest.limits.*` 등)은 환경 변수로 바꿀 수 있어요 (예: `DEVQUEST_LIMITS_SIGNUPS_PER_HOUR=20`).
+
+### 잠들었다 깨어날 때 (Serverless)
+
+Railway Serverless 를 켜 두면 한동안 요청이 없을 때 서버가 잠들고, 다음 요청에 다시 켜져요. 그 사이 기다림을 줄이고 안내해요.
+
+- **빨리 켜지기**: 이미지를 빌드할 때 jar 를 풀고 한 번 미리 띄워서 클래스 데이터 공유(CDS) 아카이브(`/app/app.jsa`)를 만들어 둬요. 로컬에서 재 보면 서버 시작이 약 4.5초 → 2.5초로 줄어요. CI 가 아카이브가 실제로 쓰이는지 확인해요.
+- **화면은 바로**: 서비스 워커([`sw.js`](sw.js))가 학습 사이트 파일을 캐시해 둬요. 평소에는 항상 네트워크에서 받고(최신), 서버가 3초 넘게 답이 없으면 캐시해 둔 화면을 먼저 보여 줘요. API 는 캐시하지 않아요.
+- **"서버를 깨우는 중" 안내**: API 응답이 1.5초 넘게 늦으면 화면 위쪽에 안내가 뜨고, 응답이 오면 내려가요. 깨어나는 동안 앞단이 502·503·504 를 주면 최대 1분 동안 잠시 뒤 다시 시도해요.
 
 ## Algorithm Quest 실행하기
 

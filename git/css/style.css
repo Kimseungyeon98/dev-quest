@@ -68,7 +68,6 @@ code { font-family: var(--mono); font-size: .92em; background: rgba(110,118,129,
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
 .btn-ghost { background: transparent; }
 .block { width: 100%; }
-.link-btn { background: none; border: 0; color: var(--muted); font-size: .78rem; text-decoration: underline; padding: 4px; }
 .fold { margin-top: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; padding: 0; }
 .fold > summary { cursor: pointer; padding: 8px 12px; font-weight: 600; font-size: .9rem; }
 .fold > div { padding: 2px 14px 12px; font-size: .9rem; }

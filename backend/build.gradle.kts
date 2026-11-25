@@ -39,7 +39,7 @@ dependencies {
 /* 저장소 루트의 학습 사이트(HTML·JS·CSS)를 static/ 으로 복사해서 Spring 이 같은 주소에서 서빙해요.
  * 화이트리스트 방식이라 backend/, .git 같은 파일은 절대 나가지 않아요. 새 과목 폴더를 만들면 여기에도 추가하세요. */
 val siteRoot = projectDir.parentFile
-val siteIncludes = listOf("index.html", "courses.js", "shared/**", "login/**", "linux/**", "sql/**", "git/**", "algo/**")
+val siteIncludes = listOf("index.html", "courses.js", "sw.js", "shared/**", "login/**", "linux/**", "sql/**", "git/**", "algo/**")
 
 tasks.processResources {
     from(siteRoot) {

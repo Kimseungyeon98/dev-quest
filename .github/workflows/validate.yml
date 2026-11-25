@@ -102,6 +102,9 @@ jobs:
           curl -fsS http://localhost:8080/actuator/health
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login/)" = 200
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/)" = 302
+          # 빨리 깨어나기: CDS 아카이브가 실제로 쓰이는지 (아카이브가 안 맞으면 JVM 이 조용히 무시해서 여기서 확인해요)
+          docker logs app 2>&1 | grep -E "Started DevQuestApplication in"
+          docker exec app java -XX:SharedArchiveFile=/app/app.jsa -Xshare:on -Xlog:cds=error -version
 
       - name: 다른 앱의 테이블은 그대로인지 확인
         env:

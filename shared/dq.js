@@ -163,15 +163,75 @@
     const headers = { Accept: 'application/json' };
     if (o.body !== undefined) headers['Content-Type'] = 'application/json';
     if (method !== 'GET' && method !== 'HEAD') { const t = cookie('XSRF-TOKEN'); if (t) headers['X-XSRF-TOKEN'] = t; }
+    const init = { method, headers, credentials: 'same-origin', body: o.body !== undefined ? JSON.stringify(o.body) : undefined };
     let res;
+    const done = wake.begin();
     try {
-      res = await fetch(path, { method, headers, credentials: 'same-origin', body: o.body !== undefined ? JSON.stringify(o.body) : undefined });
-    } catch (e) {
-      return { ok: false, status: 0, data: { error: '서버에 연결하지 못했어요. 네트워크를 확인해 주세요.' } };
+      // 잠들었던 서버가 깨어나는 동안 앞단(Railway)이 502·503·504 를 주거나 연결이 끊길 수 있어요. 잠시 뒤 다시 시도해요.
+      // 이런 응답은 요청이 서버에 닿지 않은 거라 다시 보내도 안전해요. 연결 실패는 GET 만 다시 보내요 (가입이 두 번 되지 않게).
+      const until = Date.now() + WAKE_RETRY_MS;
+      for (let attempt = 0; ; attempt++) {
+        let retry = false;
+        try {
+          res = await fetch(path, init);
+          retry = res.status === 502 || res.status === 503 || res.status === 504;
+        } catch (e) {
+          if (method !== 'GET' || Date.now() >= until) return { ok: false, status: 0, data: { error: '서버에 연결하지 못했어요. 네트워크를 확인해 주세요.' } };
+          retry = true;
+        }
+        if (!retry || Date.now() >= until) break;
+        wake.show();
+        await new Promise((r) => setTimeout(r, Math.min(1000 * (attempt + 1), 4000)));
+      }
+    } finally {
+      done();
     }
     let data = null;
     if ((res.headers.get('Content-Type') || '').includes('json')) { try { data = await res.json(); } catch (e) { data = null; } }
     return { ok: res.ok, status: res.status, data };
+  }
+
+  /* ---------- 서버를 깨우는 중 ----------
+   * 한동안 아무도 안 쓰면 서버가 잠들어요(Railway Serverless). 다시 깨는 데 몇~십몇 초가 걸려서,
+   * API 응답이 WAKE_AFTER_MS 넘게 늦으면 화면 위쪽에 안내를 띄우고 응답이 모두 오면 내려요. */
+  const WAKE_AFTER_MS = 1500;
+  const WAKE_RETRY_MS = 60000;
+  const wake = (() => {
+    let pending = 0, timer = null, box = null, shownAt = 0;
+    function show() {
+      if (box || !document.body) return;
+      box = document.createElement('div');
+      box.id = 'dq-wake'; box.className = 'dq-wake'; box.setAttribute('role', 'status');
+      box.innerHTML = '<span class="dq-wake-dot" aria-hidden="true"></span><span><b>서버를 깨우는 중이에요</b>'
+        + '<small>한동안 쉬고 있던 서버가 다시 켜지고 있어요. 보통 10초 안쪽이면 돼요.</small></span>';
+      document.body.appendChild(box);
+      shownAt = Date.now();
+    }
+    function hide() {
+      if (!box) return;
+      const el = box; box = null;
+      // 깜빡이지 않게 최소 0.6초는 보여 줘요
+      setTimeout(() => { el.classList.add('dq-wake-done'); setTimeout(() => el.remove(), 300); }, Math.max(0, 600 - (Date.now() - shownAt)));
+    }
+    return {
+      show,
+      begin() {
+        pending++;
+        if (!timer && !box) timer = setTimeout(() => { timer = null; if (pending > 0) show(); }, WAKE_AFTER_MS);
+        let ended = false;
+        return () => {
+          if (ended) return; ended = true;
+          if (--pending > 0) return;
+          if (timer) { clearTimeout(timer); timer = null; }
+          hide();
+        };
+      }
+    };
+  })();
+
+  // 서버가 깨어나는 동안에도 화면은 바로 뜨게: 사이트 파일을 캐시해 두는 서비스 워커 (/sw.js)
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
   }
 
   function loginUrl() {

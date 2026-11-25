@@ -442,9 +442,6 @@
   }
   function resetScenario() { if (sc) loadScenario(sc.id); toast('처음 상태로 되돌렸어요'); }
   $('#btnSandbox').addEventListener('click', () => { loadScenario('sandbox'); closeSidebar(); });
-  $('#btnResetAll').addEventListener('click', () => {
-    if (confirm('완료 기록을 모두 지울까요?')) { store = { done: {}, seen: true }; save(); renderTop(); renderSidebar(); if (sc) renderStory(); }
-  });
 
   /* 정답 자동 실행 */
   async function autoSolve() {

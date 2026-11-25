@@ -48,7 +48,7 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                .requestMatchers("/login", "/login/", "/login/**", "/shared/dq.css", "/shared/dq.js", "/favicon.ico").permitAll()
+                .requestMatchers("/login", "/login/", "/login/**", "/shared/dq.css", "/shared/dq.js", "/sw.js", "/favicon.ico").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/recover").permitAll()
                 .requestMatchers("/api/admin/**").permitAll() // X-Admin-Token 으로 확인 (AdminController)

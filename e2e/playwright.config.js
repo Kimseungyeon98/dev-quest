@@ -15,6 +15,8 @@ module.exports = defineConfig({
     trace: 'off',
     screenshot: 'only-on-failure',
     locale: 'ko-KR',
+    // 서비스 워커(사이트 파일 캐시)는 기본으로 끄고, 필요한 테스트(wake.spec.js)에서만 켜요
+    serviceWorkers: 'block',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 860 } } }],
 });

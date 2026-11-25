@@ -71,6 +71,15 @@ class StaticPagesTest {
     }
 
     @Test
+    void 서비스_워커는_로그인_없이_사이트_맨_위에서() throws Exception {
+        // 로그인 화면에서도 등록해야 하고, 사이트 전체를 맡으려면 맨 위 주소(/sw.js)여야 해요
+        var res = new WebClient(port).get("/sw.js");
+        assertThat(res.statusCode()).isEqualTo(200);
+        assertThat(res.headers().firstValue("Content-Type").orElse("")).contains("javascript");
+        assertThat(res.body()).contains("addEventListener('fetch'");
+    }
+
+    @Test
     void 헬스체크는_로그인_없이() throws Exception {
         var res = new WebClient(port).get("/actuator/health");
         assertThat(res.statusCode()).isEqualTo(200);

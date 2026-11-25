@@ -44,6 +44,7 @@ test('Git: 해결 뒤 Enter 로 다음 시나리오, 버튼 안 아이콘을 눌
   // 처음 방문하면 도움말 창이 조금 늦게 떠요 — 뜨면 닫아요
   await page.locator('#modal').waitFor({ state: 'visible', timeout: 3000 }).then(() => page.click('#modalX')).catch(() => {});
   await expect(page.locator('#modal')).toBeHidden();
+  await expect(page.locator('#btnResetAll')).toHaveCount(0); // 진행 기록 초기화는 없어요
   const hint = page.locator('#btnHint');
   const before = await hint.textContent();
   await page.locator('#btnHint svg').click({ force: true });
