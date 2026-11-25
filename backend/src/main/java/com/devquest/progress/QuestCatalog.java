@@ -73,23 +73,33 @@ public class QuestCatalog {
      */
     public Score score(String courseId, JsonNode data) {
         Course course = courses.get(courseId);
-        if (course == null || data == null) return new Score(0, 0);
-        JsonNode done = data.path(course.doneField());
+        Set<String> ids = doneIds(courseId, data);
+        int xp = 0;
+        for (String id : ids) xp += course.questXp().get(id);
+        return new Score(xp, ids.size());
+    }
+
+    /** 진행 기록에서 완료한 퀘스트 id (카탈로그에 있는 것만) */
+    public Set<String> doneIds(String courseId, JsonNode data) {
+        Course course = courses.get(courseId);
         Set<String> ids = new java.util.LinkedHashSet<>();
+        if (course == null || data == null) return ids;
+        JsonNode done = data.path(course.doneField());
         if (done.isArray()) {
             for (JsonNode id : done) if (id.isValueNode()) ids.add(id.asString());
         } else if (done.isObject()) {
             for (Map.Entry<String, JsonNode> e : done.properties()) if (truthy(e.getValue())) ids.add(e.getKey());
         }
-        int xp = 0, count = 0;
-        for (String id : ids) {
-            Integer q = course.questXp().get(id);
-            if (q != null) {
-                xp += q;
-                count++;
-            }
-        }
-        return new Score(xp, count);
+        ids.retainAll(course.questXp().keySet());
+        return ids;
+    }
+
+    /** 진행 기록이 완료 시각을 함께 저장해 둔 경우(Git Quest 의 done[id].t, ms) 그 시각. 없으면 null */
+    public java.time.Instant recordedAt(String courseId, JsonNode data, String questId) {
+        Course course = courses.get(courseId);
+        if (course == null || data == null) return null;
+        JsonNode t = data.path(course.doneField()).path(questId).path("t");
+        return t.isNumber() && t.asLong() > 0 ? java.time.Instant.ofEpochMilli(t.asLong()) : null;
     }
 
     private static boolean truthy(JsonNode v) {
