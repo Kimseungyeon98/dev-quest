@@ -109,7 +109,9 @@ jobs:
         run: |
           test "$(psql -h localhost -U postgres -d railway -tAc "select email from public.users")" = other-app@example.com
           test "$(psql -h localhost -U postgres -d railway -tAc "select count(*) from public.flyway_schema_history")" = 1
-          test "$(psql -h localhost -U postgres -d railway -tAc "select count(*) from information_schema.tables where table_schema = 'devquest'")" = 6
+          # dev-quest 테이블은 devquest 스키마에만 (테이블이 늘어나도 깨지지 않게 개수 대신 주요 테이블 확인)
+          test "$(psql -h localhost -U postgres -d railway -tAc "select count(*) from information_schema.tables where table_schema = 'devquest' and table_name in ('users', 'progress', 'course_scores', 'flyway_schema_history')")" = 4
+          test "$(psql -h localhost -U postgres -d railway -tAc "select count(*) from information_schema.tables where table_schema = 'public'")" = 2
 
       - name: 실패하면 앱 로그 출력
         if: failure()
