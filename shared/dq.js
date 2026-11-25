@@ -66,6 +66,87 @@
 
   function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+  /* ---------- 선 아이콘 ----------
+   * 24×24 격자, 1.8px 선. 이모지 대신 써서 운영체제마다 모양이 달라지지 않고 화면이 조용해져요.
+   * JS: DevQuest.icon('bulb')  ·  HTML: <span data-icon="bulb"></span> (페이지가 열릴 때 채워져요) */
+  const ICONS = {
+    book: 'M5 4.5A1.5 1.5 0 0 1 6.5 3H19v14H6.5A1.5 1.5 0 0 0 5 18.5z M5 18.5A1.5 1.5 0 0 0 6.5 20H19 M9 7h6',
+    bulb: 'M9 18h6 M10 21h4 M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.9V16h5v-.2c0-.8.4-1.5 1-1.9A6 6 0 0 0 12 3z',
+    cap: 'M2.5 9 12 4.5 21.5 9 12 13.5z M6.5 11v4.5c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V11 M21.5 9v5',
+    reset: 'M4 4v5h5 M4.6 9A8 8 0 1 1 4 13',
+    close: 'M6 6l12 12 M18 6 6 18',
+    play: 'M7.5 5.5v13l10-6.5z',
+    check: 'M5 12.5l4.5 4.5L19 7.5',
+    checkCircle: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M8 12.5l2.5 2.5L16 9.5',
+    xCircle: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M9 9l6 6 M15 9l-6 6',
+    help: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6 M12 17h.01',
+    lock: 'M6.5 10.5h11v9h-11z M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5',
+    key: 'M7 9a4 4 0 1 0 8 0a4 4 0 1 0-8 0 M14 12l6.5 6.5 M17.5 15.5l2-2',
+    table: 'M3.5 5.5h17v13h-17z M3.5 10h17 M3.5 14.5h17 M9.5 5.5v13',
+    target: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z M12 12h.01',
+    list: 'M9 6h11 M9 12h11 M9 18h11 M4.5 6h.01 M4.5 12h.01 M4.5 18h.01',
+    link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+    box: 'M4 7.5 12 3.5l8 4v9l-8 4-8-4z M4 7.5l8 4 8-4 M12 11.5v9',
+    loader: 'M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M5.6 18.4l2.1-2.1 M16.3 7.7l2.1-2.1',
+    menu: 'M4 6h16 M4 12h16 M4 18h16',
+    search: 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z M15.5 15.5 20 20',
+    flask: 'M9 3h6 M10 3v6.5L4.8 18.3A1.8 1.8 0 0 0 6.3 21h11.4a1.8 1.8 0 0 0 1.5-2.7L14 9.5V3 M7.5 15h9',
+    branch: 'M6 3.5v10 M8.5 16a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0 M20.5 7a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0 M18 9.5c0 4-4 5-10.5 5.5',
+    folder: 'M3.5 6.5A1.5 1.5 0 0 1 5 5h4.5l2 2.5H19a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z',
+    globe: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M3 12h18 M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z',
+    clock: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M12 7.5V12l3 2',
+    trophy: 'M8 21h8 M12 17v4 M7 4h10v5a5 5 0 0 1-10 0z M7 6H4v2a3 3 0 0 0 3 3 M17 6h3v2a3 3 0 0 1-3 3',
+    arrow: 'M5 12h14 M13 6l6 6-6 6',
+    terminal: 'M3.5 5.5h17v13h-17z M7.5 10l3 2.5-3 2.5 M13 15h4',
+    dot: 'M12 12h.01',
+  };
+  function icon(name, size) {
+    const d = ICONS[name] || name; // 이름이 없으면 path 문자열로 봐요 (과목 아이콘 courses.js iconPath)
+    const px = size || 16;
+    return `<svg class="dq-icon" width="${px}" height="${px}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="${esc(d)}"/></svg>`;
+  }
+  function decorateIcons(root) {
+    (root || document).querySelectorAll('[data-icon]:empty').forEach((el) => { el.innerHTML = icon(el.dataset.icon, Number(el.dataset.size) || 16); });
+  }
+
+  /* ---------- 정답 뒤 다음 퀘스트로 (Enter / Tab) ----------
+   * 정답을 맞힌 "바로 다음" 키가 Enter 나 Tab 이면 다음 퀘스트로 넘어가요. 그 전에 다른 키를 누르면
+   * (계속 코드를 고치거나 명령을 치는 경우) 원래 동작으로 돌아가요. 한글 입력 조합 중인 키는 건드리지 않아요. */
+  let nextKeyHandler = null;
+  function disarmNext() {
+    if (nextKeyHandler) window.removeEventListener('keydown', nextKeyHandler, true);
+    nextKeyHandler = null;
+    document.querySelectorAll('.dq-next.armed').forEach((b) => b.classList.remove('armed'));
+  }
+  function armNext(go, button) {
+    disarmNext();
+    nextKeyHandler = (e) => {
+      if (e.isComposing || e.keyCode === 229) return;
+      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Fn'].includes(e.key)) return;
+      if (e.target && e.target.closest && e.target.closest('.dq-modal, [role="dialog"]')) return; // 닉네임 창 등에서는 그대로
+      const plain = !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey;
+      disarmNext();
+      if (plain && (e.key === 'Enter' || e.key === 'Tab')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        go();
+      }
+    };
+    window.addEventListener('keydown', nextKeyHandler, true);
+    if (button) button.classList.add('armed');
+  }
+  /* "다음 퀘스트" 버튼을 만들고 Enter/Tab 도 바로 연결해요 */
+  function nextButton(label, go, className) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dq-next' + (className ? ' ' + className : '');
+    b.innerHTML = `<span>${esc(label)}</span>${icon('arrow', 16)}<span class="dq-keys" aria-hidden="true"><kbd>Enter</kbd><kbd>Tab</kbd></span>`;
+    b.setAttribute('aria-keyshortcuts', 'Enter Tab');
+    b.addEventListener('click', () => { disarmNext(); go(); });
+    armNext(go, b);
+    return b;
+  }
+
   /* ---------- 백엔드 API ----------
    * 같은 주소의 Spring 백엔드를 불러요. POST/PUT/DELETE 는 XSRF-TOKEN 쿠키 값을 X-XSRF-TOKEN 헤더로 보내야 해요(CSRF).
    * 돌려주는 값: { ok, status, data }  (data 는 JSON 응답, 오류면 { error: '화면에 보여 줄 문장' }) */
@@ -432,7 +513,7 @@
     host.innerHTML = `
       <div class="dq-lead"></div>
       <a class="dq-home" href="../index.html" title="Dev Quest 홈" aria-label="Dev Quest 홈으로">⌂</a>
-      <div class="dq-brand"><span class="dq-ico">${esc(course.icon)}</span><span class="dq-name">${esc(course.name)}</span><small class="dq-tag">${esc(course.tagline)}</small></div>
+      <div class="dq-brand"><span class="dq-ico" style="color:${esc(course.accent)}">${course.iconPath ? icon(course.iconPath, 20) : esc(course.icon)}</span><span class="dq-name">${esc(course.name)}</span><small class="dq-tag">${esc(course.tagline)}</small></div>
       <div class="dq-actions"></div>
       <div class="dq-level">
         <span class="dq-tier"></span>
@@ -447,7 +528,7 @@
     return {
       update(s) {
         const tier = host.querySelector('.dq-tier');
-        tier.innerHTML = `${s.tier.icon}<span class="dq-tn"> ${esc(s.tier.name)}</span>`;
+        tier.innerHTML = `<span class="dq-tdot" aria-hidden="true"></span><span class="dq-tn">${esc(s.tier.name)}</span>`;
         tier.style.color = s.tier.color;
         host.querySelector('.dq-lv').textContent = `Lv.${s.level.level}`;
         host.querySelector('.dq-xp i').style.width = `${Math.round((s.level.into / s.level.need) * 100)}%`;
@@ -463,15 +544,20 @@
   function itemHtml(it) {
     const d = it.difficulty != null ? diffMeta(it.difficulty) : null;
     return `<button type="button" class="dq-item${it.done ? ' done' : ''}${it.active ? ' active' : ''}${it.locked ? ' locked' : ''}" data-id="${esc(it.id)}"${it.locked ? ' aria-disabled="true"' : ''}>`
-      + `<span class="dq-i-ico">${it.icon || (it.locked ? '🔒' : '▶')}</span><span class="dq-i-ti">${esc(it.title)}</span>`
+      + `<span class="dq-i-ico">${icon(it.done ? 'checkCircle' : it.locked ? 'lock' : it.active ? 'play' : 'dot', 16)}</span><span class="dq-i-ti">${esc(it.title)}</span>`
       + (d ? `<span class="dq-i-lv ${d.cls}" title="난이도: ${d.label}">${d.stars}</span>` : '')
-      + `<span class="dq-i-ck">${it.done ? '✓' : ''}</span></button>`;
+      + `<span class="sr-only dq-sr">${it.done ? '완료' : it.locked ? '잠김' : ''}</span></button>`;
   }
   /* cat: { id, icon, label, desc?, done, total }, bodyHtml: itemHtml 들을 이어 붙인 문자열 */
   function catHtml(cat, bodyHtml, open) {
-    return `<details class="dq-cat" data-cat="${esc(cat.id)}"${open ? ' open' : ''}><summary><span>${esc(cat.icon)}</span><span>${esc(cat.label)}</span><span class="dq-cat-count">${cat.done}/${cat.total}</span></summary>`
+    return `<details class="dq-cat" data-cat="${esc(cat.id)}"${open ? ' open' : ''}><summary><span class="dq-cat-no" aria-hidden="true"></span><span>${esc(cat.label)}</span><span class="dq-cat-count">${cat.done}/${cat.total}</span></summary>`
       + (cat.desc ? `<div class="dq-cat-desc">${esc(cat.desc)}</div>` : '') + bodyHtml + '</details>';
   }
 
-  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout, sync, afterSync, merge, notice, getMe, openNicknameDialog };
+  window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout, sync, afterSync, merge, notice, getMe, openNicknameDialog,
+    icon, decorateIcons, armNext, disarmNext, nextButton };
+  // 정적 HTML 의 <span data-icon="…"> 채우기 (스크립트는 body 끝에서 불러서 요소가 이미 있어요)
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => decorateIcons()); else decorateIcons();
+  }
 })();

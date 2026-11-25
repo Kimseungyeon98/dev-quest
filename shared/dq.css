@@ -13,13 +13,14 @@
 }
 .dqbar .dq-home:hover, .dqbar .dq-home:focus-visible { background: rgba(139,148,158,.18); }
 .dqbar .dq-brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; white-space: nowrap; overflow: hidden; }
-.dqbar .dq-ico { font-size: 18px; }
+.dqbar .dq-ico { font-size: 18px; display: inline-grid; place-items: center; align-self: center; }
 .dqbar .dq-name { font-size: 18px; font-weight: 800; color: var(--dq-accent); }
 .dqbar .dq-tag { font-size: 12px; color: var(--muted, #8b949e); overflow: hidden; text-overflow: ellipsis; }
 .dqbar .dq-actions { margin-left: auto; }
 .dqbar .dq-level { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; font-size: 12px; }
 .dqbar .dq-actions + .dq-level { margin-left: 4px; }
-.dqbar .dq-tier { font-weight: 700; white-space: nowrap; }
+.dqbar .dq-tier { font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.dqbar .dq-tdot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
 .dqbar .dq-lv {
   font-weight: 800; color: #0d1117; background: var(--dq-accent); border-radius: 99px; padding: 2px 9px; font-size: 12px; white-space: nowrap;
 }
@@ -57,7 +58,10 @@
 .dq-item.active { background: color-mix(in srgb, var(--dq-accent, #58a6ff) 16%, transparent); outline: 1px solid color-mix(in srgb, var(--dq-accent, #58a6ff) 45%, transparent); }
 .dq-item.locked { opacity: .5; cursor: not-allowed; }
 .dq-item.locked:hover { background: transparent; }
-.dq-i-ico { width: 22px; text-align: center; flex: none; }
+.dq-i-ico { width: 22px; flex: none; display: inline-grid; place-items: center; color: var(--muted, #8b949e); }
+.dq-item.done .dq-i-ico { color: #56d364; }
+.dq-item.active .dq-i-ico { color: var(--dq-accent, #58a6ff); }
+.dq-item.active .dq-i-ico path { fill: currentColor; }
 .dq-i-ti { flex: 1; min-width: 0; }
 .dq-i-lv { font-size: 11px; letter-spacing: -1px; white-space: nowrap; flex: none; }
 .dq-i-ck { width: 18px; color: #56d364; font-weight: 800; flex: none; text-align: center; }
@@ -128,3 +132,30 @@
 .dq-btn:disabled { opacity: .6; cursor: progress; }
 .dq-btn-ghost { color: #c9d1d9; background: none; border: 1px solid #3a4452; }
 .dq-btn:focus-visible, .dq-btn-ghost:focus-visible { outline: 2px solid #f0f6fc; outline-offset: 2px; }
+
+/* ---------- 선 아이콘 ---------- */
+.dq-icon { flex: none; vertical-align: -3px; }
+[data-icon] { display: inline-grid; place-items: center; vertical-align: -3px; }
+button [data-icon], summary [data-icon], .dq-label [data-icon] { margin-right: 6px; }
+.dq-sr, .sr-only.dq-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* 사이드바 분류 번호 (01, 02, …) */
+.dq-cat:first-of-type { counter-reset: dqcat; }
+.dq-cat { counter-increment: dqcat; }
+.dq-cat-no::before {
+  content: counter(dqcat, decimal-leading-zero); display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 0 4px; border-radius: 6px;
+  font: 700 11px/1 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .02em;
+  color: var(--dq-accent, #58a6ff); background: color-mix(in srgb, var(--dq-accent, #58a6ff) 14%, transparent);
+}
+/* 정답 뒤 "다음 퀘스트" 버튼 — 깜빡이는 키 안내는 Enter/Tab 이 살아 있을 때만 */
+.dq-next {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; margin-top: 10px; border: 0; border-radius: 8px; cursor: pointer;
+  font: inherit; font-size: 14px; font-weight: 800; color: #0d1117; background: var(--dq-accent, #58a6ff);
+}
+.dq-next:hover { filter: brightness(1.08); }
+.dq-next:focus-visible { outline: 2px solid #f0f6fc; outline-offset: 2px; }
+.dq-keys { display: none; gap: 4px; margin-left: 6px; }
+.armed .dq-keys { display: inline-flex; }
+.dq-keys kbd {
+  font: 700 11px/1 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 3px 5px; border-radius: 4px;
+  color: #0d1117; background: rgba(255,255,255,.45); border: 1px solid rgba(13,17,23,.25);
+}

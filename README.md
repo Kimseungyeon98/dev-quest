@@ -15,6 +15,8 @@
 - **내 상태**: 종합 티어·레벨, 다음 티어까지 남은 XP, 총 XP·완료 수
 - **과목 4개**: 과목별 진행률, **랭킹** 미니 목록, 점수 규칙
 - 과목 화면은 주소 끝의 `#퀘스트id` 로 그 퀘스트를 바로 열어요 (예: `sql/index.html#agg-customer-order-count`).
+- 과목 화면에서 정답을 맞힌 **바로 다음에 Enter 나 Tab** 을 누르면 다음 퀘스트로 넘어가요 (그 전에 다른 키를 누르면 원래대로 입력돼요). `DevQuest.nextButton()` / `DevQuest.armNext()` 가 처리해요.
+- 아이콘은 이모지 대신 `shared/dq.js` 의 선 아이콘(`DevQuest.icon('bulb')`, HTML 은 `<span data-icon="bulb"></span>`)을 써요. 시나리오 설명·축하 문구 속 이모지는 콘텐츠라 그대로 둬요.
 
 ## 백엔드 (Spring Boot)
 

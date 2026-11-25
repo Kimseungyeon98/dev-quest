@@ -12,8 +12,8 @@
 <div id="app" class="app">
   <!-- 상단 바 -->
   <header id="dqbar">
-    <button id="btnMenu" data-dq-slot="lead" class="icon-btn only-mobile" aria-label="퀘스트 목록">☰</button>
-    <button id="btnSos" data-dq-slot="actions" class="chip chip-sos" title="지금 상황으로 퀘스트 찾기">🆘<span> 상황 찾기</span></button>
+    <button id="btnMenu" data-dq-slot="lead" class="icon-btn only-mobile" aria-label="퀘스트 목록"><span data-icon="menu"></span></button>
+    <button id="btnSos" data-dq-slot="actions" class="chip chip-sos" title="지금 상황으로 퀘스트 찾기"><span data-icon="search"></span><span>상황 찾기</span></button>
     <button id="btnHelp" data-dq-slot="actions" class="icon-btn" aria-label="도움말">?</button>
   </header>
 
@@ -21,12 +21,12 @@
     <!-- 왼쪽: 시나리오 목록 -->
     <aside id="sidebar" class="sidebar">
       <div class="sidebar-head">
-        <input id="sosInput" class="search" type="search" placeholder="🔎 예) push 거절, 충돌, 되돌리기" autocomplete="off">
+        <input id="sosInput" class="search" type="search" placeholder="예) push 거절, 충돌, 되돌리기" autocomplete="off">
       </div>
       <div id="sosResults" class="sos-results" hidden></div>
       <nav id="scenarioList" class="scenario-list"></nav>
       <div class="sidebar-foot">
-        <button id="btnSandbox" class="btn btn-ghost block">🧪 자유 연습장 (샌드박스)</button>
+        <button id="btnSandbox" class="btn btn-ghost block"><span data-icon="flask"></span>자유 연습장 (샌드박스)</button>
         <button id="btnResetAll" class="link-btn">진행 기록 초기화</button>
       </div>
     </aside>
@@ -43,7 +43,7 @@
             <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
             <span class="term-title" id="termTitle">terminal</span>
             <button id="btnClear" class="mini-btn" title="화면 지우기">지우기</button>
-            <button id="btnReset" class="mini-btn" title="이 시나리오를 처음 상태로">↺ 처음부터</button>
+            <button id="btnReset" class="mini-btn" title="이 시나리오를 처음 상태로"><span data-icon="reset"></span>처음부터</button>
           </div>
           <div id="termOut" class="term-out" tabindex="-1" aria-live="polite"></div>
           <div id="chips" class="chips"></div>
@@ -59,10 +59,10 @@
     <!-- 오른쪽: 시각화 -->
     <aside class="right" id="rightCol">
       <div class="vis-tabs" id="visTabs" role="tablist">
-        <button data-vis="graph" class="active">🌳 그래프</button>
-        <button data-vis="files">📁 작업공간</button>
-        <button data-vis="remote">🌐 원격</button>
-        <button data-vis="log">🕑 기록</button>
+        <button data-vis="graph" class="active"><span data-icon="branch"></span>그래프</button>
+        <button data-vis="files"><span data-icon="folder"></span>작업공간</button>
+        <button data-vis="remote"><span data-icon="globe"></span>원격</button>
+        <button data-vis="log"><span data-icon="clock"></span>기록</button>
       </div>
       <section id="visGraph" class="vis active"></section>
       <section id="visFiles" class="vis"></section>
@@ -73,18 +73,18 @@
 
   <!-- 모바일 하단 탭 -->
   <nav class="bottom-nav" id="bottomNav">
-    <button data-pane="story" class="active"><span>📖</span>상황</button>
-    <button data-pane="term"><span>⌨️</span>터미널</button>
-    <button data-pane="graph"><span>🌳</span>그래프</button>
-    <button data-pane="files"><span>📁</span>파일</button>
-    <button data-pane="remote"><span>🌐</span>원격</button>
+    <button data-pane="story" class="active"><span data-icon="book"></span>상황</button>
+    <button data-pane="term"><span data-icon="terminal"></span>터미널</button>
+    <button data-pane="graph"><span data-icon="branch"></span>그래프</button>
+    <button data-pane="files"><span data-icon="folder"></span>파일</button>
+    <button data-pane="remote"><span data-icon="globe"></span>원격</button>
   </nav>
 </div>
 
 <!-- 모달 -->
 <div id="modal" class="modal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true">
-    <div class="modal-head"><strong id="modalTitle"></strong><button id="modalX" class="icon-btn" aria-label="닫기">✕</button></div>
+    <div class="modal-head"><strong id="modalTitle"></strong><button id="modalX" class="icon-btn" aria-label="닫기"><span data-icon="close"></span></button></div>
     <div id="modalBody" class="modal-body"></div>
     <div id="modalFoot" class="modal-foot"></div>
   </div>

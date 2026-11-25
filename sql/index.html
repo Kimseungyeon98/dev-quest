@@ -18,21 +18,21 @@
         <div id="categoryList"></div>
       </details>
       <div class="sidebar-section">
-        <button id="cheatSheetBtn">📖 지금까지 배운 패턴</button>
+        <button id="cheatSheetBtn"><span data-icon="book"></span>지금까지 배운 패턴</button>
       </div>
     </aside>
 
     <section id="workPane">
-      <div id="loadingBanner">⏳ SQL 엔진(SQLite WASM) 로딩 중...</div>
+      <div id="loadingBanner"><span data-icon="loader"></span>SQL 엔진(SQLite WASM) 로딩 중...</div>
 
       <div id="problemBrief" class="hidden">
         <h3 id="problemTitle">-</h3>
         <p id="problemScenario">-</p>
         <div id="expectedColumns" class="expected-columns hidden"></div>
         <div id="hintArea">
-          <button id="hintBtn">💡 힌트</button>
-          <button id="conceptBtn" class="hidden">📚 왜 배우나요?</button>
-          <button id="schemaToggleBtn">🗂️ 스키마 보기</button>
+          <button id="hintBtn"><span data-icon="bulb"></span>힌트</button>
+          <button id="conceptBtn" class="hidden"><span data-icon="cap"></span>왜 배우나요?</button>
+          <button id="schemaToggleBtn"><span data-icon="table"></span>스키마 보기</button>
           <div id="hintText" class="hidden"></div>
           <div id="conceptText" class="hidden"></div>
         </div>
@@ -41,12 +41,12 @@
 
       <div id="queryWorkArea" class="hidden">
         <div id="targetQueryBox" class="hidden">
-          <div class="box-label">🎯 최적화 대상 쿼리 (읽기 전용)</div>
+          <div class="box-label"><span data-icon="target"></span>최적화 대상 쿼리 (읽기 전용)</div>
           <pre id="targetQueryText"></pre>
         </div>
         <textarea id="sqlEditor" spellcheck="false" autocomplete="off"></textarea>
         <div class="editor-actions">
-          <button id="runBtn">▶ 실행</button>
+          <button id="runBtn"><span data-icon="play"></span>실행</button>
           <span id="runStatus"></span>
         </div>
         <div id="resultArea"></div>
@@ -55,7 +55,7 @@
 
       <div id="shortAnswerArea" class="hidden">
         <div id="shortAnswerPlanBox" class="hidden">
-          <div class="box-label">📋 실행계획</div>
+          <div class="box-label"><span data-icon="list"></span>실행계획</div>
           <pre id="shortAnswerPlanText"></pre>
         </div>
         <p id="shortAnswerQuestion"></p>
@@ -71,8 +71,8 @@
 
 <div id="cheatSheetModal" class="modal hidden">
   <div class="modal-content">
-    <button id="closeCheatSheet" class="modal-close">✕</button>
-    <h2>📖 지금까지 배운 패턴</h2>
+    <button id="closeCheatSheet" class="modal-close" aria-label="닫기"><span data-icon="close"></span></button>
+    <h2><span data-icon="book"></span>지금까지 배운 패턴</h2>
     <div id="cheatSheetList"></div>
   </div>
 </div>

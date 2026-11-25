@@ -49,6 +49,8 @@ code { font-family: var(--mono); font-size: .92em; background: rgba(110,118,129,
 /* 시나리오 카드 */
 .sc-head { display: flex; align-items: flex-start; gap: 10px; }
 .sc-head .big { font-size: 1.9rem; line-height: 1; }
+.sc-head .sc-ico { width: 40px; height: 40px; flex: none; border-radius: 10px; display: grid; place-items: center; color: var(--dq-accent, #f05033); background: color-mix(in srgb, var(--dq-accent, #f05033) 15%, transparent); }
+.chip-sos [data-icon] { margin-right: 4px; }
 .sc-title { margin: 0; font-size: 1.15rem; line-height: 1.3; }
 .sc-meta { color: var(--muted); font-size: .8rem; margin-top: 2px; }
 .stars { color: var(--yellow); letter-spacing: 1px; }
@@ -197,6 +199,7 @@ code { font-family: var(--mono); font-size: .92em; background: rgba(110,118,129,
   .bottom-nav { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--bg2); border-top: 1px solid var(--line); padding-bottom: var(--safe-b); flex: none; }
   .bottom-nav button { background: transparent; border: 0; padding: 7px 0 6px; color: var(--muted); font-size: .7rem; display: flex; flex-direction: column; align-items: center; gap: 1px; position: relative; }
   .bottom-nav button span { font-size: 1.2rem; line-height: 1.1; }
+  .bottom-nav button [data-icon] { margin: 0; }
   .bottom-nav button.active { color: #fff; }
   .bottom-nav button.active::before { content: ""; position: absolute; top: 0; left: 25%; right: 25%; height: 2px; background: var(--accent); border-radius: 0 0 3px 3px; }
   .bottom-nav button .pip { position: absolute; top: 4px; right: 22%; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }

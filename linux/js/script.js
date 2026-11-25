@@ -1062,7 +1062,7 @@
     wrap.className = 'success-banner';
     const title = document.createElement('div');
     title.className = 'title';
-    title.textContent = '✅ 미션 성공! ' + mission.title;
+    title.innerHTML = window.DevQuest.icon('checkCircle', 18) + ' 미션 성공! ' + window.DevQuest.esc(mission.title);
     const xp = document.createElement('div');
     xp.className = 'xp';
     xp.textContent = `+${window.DevQuest.diffMeta(mission.difficulty).xp} XP 획득`;
@@ -1071,15 +1071,13 @@
 
     const nextIndex = game.currentIndex + 1;
     if (nextIndex < MISSIONS.length) {
-      const btn = document.createElement('button');
-      btn.textContent = '다음 퀘스트 ▶';
-      btn.addEventListener('click', () => loadMission(nextIndex));
-      wrap.appendChild(btn);
+      // 정답 직후 Enter·Tab 으로도 넘어가요 (다른 키를 누르면 원래대로)
+      wrap.appendChild(window.DevQuest.nextButton('다음 퀘스트', () => loadMission(nextIndex)));
     } else {
       const done = document.createElement('div');
       done.className = 'title';
       done.style.marginTop = '6px';
-      done.textContent = '🏆 모든 미션 클리어! 당신은 이제 리눅스 명령어를 다루는 SI 개발자입니다.';
+      done.innerHTML = window.DevQuest.icon('trophy', 18) + ' 모든 미션 클리어! 당신은 이제 리눅스 명령어를 다루는 SI 개발자입니다.';
       wrap.appendChild(done);
     }
     el.terminalOutput.appendChild(wrap);
@@ -1140,6 +1138,7 @@
   }
 
   function loadMission(index) {
+    window.DevQuest.disarmNext();
     if (viState) closeViEditor(false, true);
     const mission = MISSIONS[index];
     game.currentIndex = index;
@@ -1537,7 +1536,7 @@
 
   el.hintBtn.addEventListener('click', () => {
     const mission = MISSIONS[game.currentIndex];
-    el.hintText.textContent = '💡 ' + mission.hints[game.hintIndex];
+    el.hintText.innerHTML = window.DevQuest.icon('bulb') + ' ' + window.DevQuest.esc(mission.hints[game.hintIndex]);
     el.hintText.classList.remove('hidden');
     game.hintIndex = (game.hintIndex + 1) % mission.hints.length;
   });
@@ -1545,7 +1544,7 @@
   el.conceptBtn.addEventListener('click', () => {
     const mission = MISSIONS[game.currentIndex];
     if (!mission.concept) return;
-    el.conceptText.textContent = '📚 ' + mission.concept;
+    el.conceptText.innerHTML = window.DevQuest.icon('cap') + ' ' + window.DevQuest.esc(mission.concept);
     el.conceptText.classList.toggle('hidden');
   });
 

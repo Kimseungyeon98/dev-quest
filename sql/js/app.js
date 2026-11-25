@@ -295,7 +295,7 @@
     el.planArea.innerHTML = '';
     const labelDiv = document.createElement('div');
     labelDiv.className = 'box-label';
-    labelDiv.textContent = isInitial ? '📋 현재 실행계획 (최적화 전)' : '📋 실행계획';
+    labelDiv.innerHTML = window.DevQuest.icon('list') + (isInitial ? ' 현재 실행계획 (최적화 전)' : ' 실행계획');
     let cls = '';
     if (!isInitial && (problem.requirePlanIncludes || problem.requirePlanExcludes)) {
       const upper = (planText || '').toUpperCase();
@@ -314,7 +314,7 @@
     el.schemaPanel.innerHTML = '';
     const labelDiv = document.createElement('div');
     labelDiv.className = 'schema-domain-label';
-    labelDiv.textContent = '📦 도메인: ' + schema.label;
+    labelDiv.innerHTML = window.DevQuest.icon('box') + ' 도메인: ' + window.DevQuest.esc(schema.label);
     el.schemaPanel.appendChild(labelDiv);
 
     schema.tables.forEach((t) => {
@@ -383,7 +383,7 @@
       relBox.className = 'relations-box';
       const relLabel = document.createElement('div');
       relLabel.className = 'box-label';
-      relLabel.textContent = '🔗 관계';
+      relLabel.innerHTML = window.DevQuest.icon('link') + ' 관계';
       relBox.appendChild(relLabel);
       schema.relations.forEach((r) => {
         const row = document.createElement('div');
@@ -401,6 +401,7 @@
   function loadProblem(id) {
     const problem = PROBLEMS_BY_ID[id];
     if (!problem) return;
+    clearNext();
     if (state.db) { state.db.close(); state.db = null; }
 
     state.currentProblemId = id;
@@ -431,7 +432,7 @@
     renderSchemaPanel(schema);
 
     if (state.cachedSolutionResult) {
-      el.expectedColumns.textContent = '📋 정답 컬럼 (이 순서대로): ' + state.cachedSolutionResult.columns.join(', ') + '  ·  별칭(AS)은 달라도 됩니다';
+      el.expectedColumns.innerHTML = window.DevQuest.icon('list') + ' ' + window.DevQuest.esc('정답 컬럼 (이 순서대로): ' + state.cachedSolutionResult.columns.join(', ') + '  ·  별칭(AS)은 달라도 됩니다');
       el.expectedColumns.classList.remove('hidden');
     } else {
       el.expectedColumns.classList.add('hidden');
@@ -498,7 +499,7 @@
     }
 
     if (error) {
-      el.runStatus.textContent = '❌ ' + error;
+      el.runStatus.innerHTML = window.DevQuest.icon('xCircle') + ' ' + window.DevQuest.esc(error);
       el.runStatus.className = 'status-error';
       return;
     }
@@ -553,13 +554,27 @@
     }
 
     if (passed) {
-      el.runStatus.textContent = '✅ 정답입니다!' + (passNote ? ` (${passNote})` : '');
+      el.runStatus.innerHTML = window.DevQuest.icon('checkCircle') + ' ' + window.DevQuest.esc('정답입니다!' + (passNote ? ` (${passNote})` : ''));
       el.runStatus.className = 'status-ok';
       markSolved(problem.id);
+      offerNext(el.runStatus);
     } else {
-      el.runStatus.textContent = '🤔 아직이에요: ' + reasons.join(' / ');
+      el.runStatus.innerHTML = window.DevQuest.icon('help') + ' ' + window.DevQuest.esc('아직이에요: ' + reasons.join(' / '));
       el.runStatus.className = 'status-warn';
     }
+  }
+
+  /* 정답 직후: 다음 문제 버튼 + Enter·Tab 으로 넘어가기 (다른 키를 누르면 원래대로) */
+  function clearNext() {
+    window.DevQuest.disarmNext();
+    document.querySelectorAll('.dq-next').forEach((b) => b.remove());
+  }
+  function offerNext(afterEl) {
+    clearNext();
+    const idx = PROBLEMS.findIndex((p) => p.id === state.currentProblemId);
+    const next = PROBLEMS[idx + 1];
+    if (!next) return;
+    afterEl.insertAdjacentElement('afterend', window.DevQuest.nextButton('다음 문제: ' + next.title, () => loadProblem(next.id)));
   }
 
   function handleShortAnswerSubmit() {
@@ -569,11 +584,12 @@
     const accepted = (problem.acceptedAnswers || []).map((a) => a.trim().toLowerCase());
     const ok = accepted.some((a) => val === a || val.includes(a));
     if (ok) {
-      el.shortAnswerFeedback.textContent = '✅ 정답입니다!';
+      el.shortAnswerFeedback.innerHTML = window.DevQuest.icon('checkCircle') + ' 정답입니다!';
       el.shortAnswerFeedback.className = 'status-ok';
       markSolved(problem.id);
+      offerNext(el.shortAnswerFeedback);
     } else {
-      el.shortAnswerFeedback.textContent = '🤔 다시 한 번 생각해보세요.';
+      el.shortAnswerFeedback.innerHTML = window.DevQuest.icon('help') + ' 다시 한 번 생각해보세요.';
       el.shortAnswerFeedback.className = 'status-warn';
     }
   }
@@ -623,7 +639,7 @@
   el.hintBtn.addEventListener('click', () => {
     const p = PROBLEMS_BY_ID[state.currentProblemId];
     if (!p.hints || p.hints.length === 0) return;
-    el.hintText.textContent = '💡 ' + p.hints[state.hintIndex];
+    el.hintText.innerHTML = window.DevQuest.icon('bulb') + ' ' + window.DevQuest.esc(p.hints[state.hintIndex]);
     el.hintText.classList.remove('hidden');
     state.hintIndex = (state.hintIndex + 1) % p.hints.length;
   });
@@ -631,7 +647,7 @@
   el.conceptBtn.addEventListener('click', () => {
     const p = PROBLEMS_BY_ID[state.currentProblemId];
     if (!p.concept) return;
-    el.conceptText.textContent = '📚 ' + p.concept;
+    el.conceptText.innerHTML = window.DevQuest.icon('cap') + ' ' + window.DevQuest.esc(p.concept);
     el.conceptText.classList.toggle('hidden');
   });
 
@@ -669,7 +685,7 @@
         el.categoryListDetails.removeAttribute('open');
       }
     }).catch((err) => {
-      el.loadingBanner.textContent = '❌ SQL 엔진 로딩 실패: ' + err.message;
+      el.loadingBanner.innerHTML = window.DevQuest.icon('xCircle') + ' ' + window.DevQuest.esc('SQL 엔진 로딩 실패: ' + err.message);
     });
   }
 

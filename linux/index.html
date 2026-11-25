@@ -18,7 +18,7 @@
         <div id="missionList"></div>
       </details>
       <div class="sidebar-section">
-        <button id="cheatSheetBtn">📖 지금까지 배운 명령어</button>
+        <button id="cheatSheetBtn"><span data-icon="book"></span>지금까지 배운 명령어</button>
       </div>
     </aside>
 
@@ -27,8 +27,8 @@
         <h3 id="missionTitle">-</h3>
         <p id="missionDesc">-</p>
         <div id="hintArea">
-          <button id="hintBtn">💡 힌트 보기</button>
-          <button id="conceptBtn" class="hidden">📚 왜 배우나요?</button>
+          <button id="hintBtn"><span data-icon="bulb"></span>힌트 보기</button>
+          <button id="conceptBtn" class="hidden"><span data-icon="cap"></span>왜 배우나요?</button>
           <div id="hintText" class="hidden"></div>
           <div id="conceptText" class="hidden"></div>
         </div>
@@ -38,7 +38,7 @@
         <div class="terminal-titlebar">
           <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
           <span class="terminal-title">user@linux-game: ~</span>
-          <button id="resetMissionBtn" title="이 미션 다시 시작">↺ 초기화</button>
+          <button id="resetMissionBtn" title="이 미션 다시 시작"><span data-icon="reset"></span>초기화</button>
         </div>
         <div id="terminalOutput"></div>
         <div id="viBuffer" class="vi-buffer hidden"></div>
@@ -54,8 +54,8 @@
 
 <div id="cheatSheetModal" class="modal hidden">
   <div class="modal-content">
-    <button id="closeCheatSheet" class="modal-close">✕</button>
-    <h2>📖 지금까지 배운 명령어</h2>
+    <button id="closeCheatSheet" class="modal-close" aria-label="닫기"><span data-icon="close"></span></button>
+    <h2><span data-icon="book"></span>지금까지 배운 명령어</h2>
     <div id="cheatSheetList"></div>
   </div>
 </div>

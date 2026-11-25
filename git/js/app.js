@@ -172,32 +172,32 @@
     const goals = sc.goals.map((g, i) => `<li data-g="${i}" class="${goalOk[i] ? 'ok' : ''}"><span class="mk">${goalOk[i] ? '✓' : ''}</span><span>${UI.esc(g[0])}</span></li>`).join('');
     const hintHtml = sc.hints.slice(0, hintShown).map((h) => `<li>${UI.md(h).replace(/<\/?p>/g, '')}</li>`).join('');
     return `
-      <div class="sc-head"><div class="big">${sc.icon}</div><div><h2 class="sc-title">${UI.esc(sc.title)}</h2>
-        <div class="sc-meta">${cat ? cat.icon + ' ' + cat.name + ' · ' : sc.id === 'sandbox' ? '' : ''}${sc.level ? `난이도 <span class="${DQ.diffMeta(sc.level).cls}">${DQ.diffMeta(sc.level).stars} ${DQ.diffMeta(sc.level).label}</span>` : '자유 모드'}${done ? ' · <span style="color:var(--green)">✓ 완료</span>' : ''}</div></div></div>
+      <div class="sc-head"><div class="big sc-ico">${DQ.icon(sc.id === 'sandbox' ? 'flask' : 'branch', 22)}</div><div><h2 class="sc-title">${UI.esc(sc.title)}</h2>
+        <div class="sc-meta">${cat ? cat.name + ' · ' : ''}${sc.level ? `난이도 <span class="${DQ.diffMeta(sc.level).cls}">${DQ.diffMeta(sc.level).stars} ${DQ.diffMeta(sc.level).label}</span>` : '자유 모드'}${done ? ' · <span style="color:var(--green)">✓ 완료</span>' : ''}</div></div></div>
       <div class="story">${UI.md(sc.story)}</div>
       ${sc.goals.length ? `<ul class="goals" id="goalList">${goals}</ul>` : ''}
       <div id="successBox">${solved ? successHtml() : ''}</div>
       <div class="sc-actions">
-        ${sc.hints.length ? `<button class="btn" id="btnHint">💡 힌트 ${hintShown}/${sc.hints.length}</button>` : ''}
-        ${sc.solution && sc.solution.cmds.length ? '<button class="btn" id="btnSol">✅ 정답 보기</button><button class="btn" id="btnAuto">▶ 정답 자동 실행</button>' : ''}
+        ${sc.hints.length ? `<button class="btn" id="btnHint">${DQ.icon('bulb')} 힌트 ${hintShown}/${sc.hints.length}</button>` : ''}
+        ${sc.solution && sc.solution.cmds.length ? `<button class="btn" id="btnSol">${DQ.icon('key')} 정답 보기</button><button class="btn" id="btnAuto">${DQ.icon('play')} 정답 자동 실행</button>` : ''}
       </div>
-      <div id="hintBox">${hintHtml ? `<details class="fold" open><summary>💡 힌트</summary><div><ol class="hintlist">${hintHtml}</ol></div></details>` : ''}</div>
-      ${sc.why ? `<details class="fold"><summary>📚 왜 배우나요? (개념 노트)</summary><div>${UI.md(sc.why)}</div></details>` : ''}
+      <div id="hintBox">${hintHtml ? `<details class="fold" open><summary>${DQ.icon('bulb')} 힌트</summary><div><ol class="hintlist">${hintHtml}</ol></div></details>` : ''}</div>
+      ${sc.why ? `<details class="fold"><summary>${DQ.icon('cap')} 왜 배우나요? (개념 노트)</summary><div>${UI.md(sc.why)}</div></details>` : ''}
       <div id="solBox"></div>`;
   }
   function successHtml() {
     const idx = GP.scenarios.findIndex((s) => s.id === sc.id);
     const next = GP.scenarios[idx + 1];
-    return `<div class="success"><h3>🎉 해결했어요!</h3><div>${UI.esc(sc.solution.explain || '')}</div>${next ? `<div class="sc-actions"><button class="btn btn-primary" data-next="${next.id}">다음: ${UI.esc(next.title)} →</button></div>` : '<div>모든 시나리오를 끝냈어요! 🏆</div>'}</div>`;
+    return `<div class="success"><h3>${DQ.icon('checkCircle', 18)} 해결했어요!</h3><div>${UI.esc(sc.solution.explain || '')}</div>${next ? `<div class="sc-actions"><button class="btn btn-primary" data-next="${next.id}" aria-keyshortcuts="Enter Tab">다음: ${UI.esc(next.title)} →<span class="dq-keys" aria-hidden="true"><kbd>Enter</kbd><kbd>Tab</kbd></span></button></div>` : `<div>${DQ.icon('trophy')} 모든 시나리오를 끝냈어요!</div>`}</div>`;
   }
   function renderStory() { $('#storyBox').innerHTML = storyHtml(); }
   $('#storyBox').addEventListener('click', (e) => {
-    const t = e.target;
+    const t = e.target.closest('button') || e.target; // 버튼 안 아이콘을 눌러도 버튼으로
     if (t.id === 'btnHint') {
       if (hintShown < sc.hints.length) { hintShown++; usedHints(); renderStory(); }
     } else if (t.id === 'btnSol') {
       const cmds = sc.solution.cmds.map((c) => (Array.isArray(c) ? (c[0] === 'write' ? `# 파일 ${c[1]} 을(를) 편집기로 수정:\n${c[2].replace(/\n$/, '')}` : '# (설정 작업)') : (typeof c === 'string' ? c : c.cmd))).join('\n');
-      $('#solBox').innerHTML = `<details class="fold sol" open><summary>✅ 정답 예시</summary><div><pre>${UI.esc(cmds)}</pre><div>${UI.md(sc.solution.explain || '')}</div></div></details>`;
+      $('#solBox').innerHTML = `<details class="fold sol" open><summary>${DQ.icon('key')} 정답 예시</summary><div><pre>${UI.esc(cmds)}</pre><div>${UI.md(sc.solution.explain || '')}</div></div></details>`;
       markAssisted();
     } else if (t.id === 'btnAuto') autoSolve();
     else if (t.dataset && t.dataset.next) loadScenario(t.dataset.next);
@@ -216,6 +216,9 @@
       solved = true;
       if (!store.done[sc.id]) { store.done[sc.id] = { t: Date.now() }; save(); }
       $('#successBox').innerHTML = successHtml();
+      // 정답 직후 Enter·Tab 으로 다음 시나리오 (다른 키를 누르면 원래대로)
+      const nextBtn = $('#successBox [data-next]');
+      if (nextBtn) DQ.armNext(() => loadScenario(nextBtn.dataset.next), nextBtn);
       renderTop(); renderSidebar();
       toast('🎉 모든 목표 달성!', 2600);
       if (window.matchMedia('(max-width: 960px)').matches) setNavPip('story', true);
@@ -416,6 +419,7 @@
     return l;
   }
   function loadScenario(id) {
+    DQ.disarmNext();
     sc = id === 'sandbox' ? SANDBOX : GP.scenarios.find((s) => s.id === id);
     if (!sc) return;
     try { lab = buildLab(sc); } catch (e) { console.error(e); toast('시나리오 준비 중 오류: ' + e.message, 5000); return; }
@@ -478,9 +482,9 @@
         <li><b>상황 읽기</b> — 왼쪽 목록에서 시나리오를 고르면 "오늘 이런 일이 생겼어요" 형식으로 문제가 나와요.</li>
         <li><b>터미널에 명령 입력</b> — 실제 git 과 같은 출력이 나와요. 편집기(vim 등)가 필요한 순간엔 간단한 입력창이 열려요.</li>
         <li><b>그래프로 확인</b> — 오른쪽 탭에서 커밋 그래프, 작업공간(스테이징), 원격, reflog 를 볼 수 있어요.</li>
-        <li><b>목표 달성</b> — 체크리스트가 모두 ✓ 되면 해결! 막히면 💡힌트 → 📚개념 → ✅정답 순서로 보세요.</li>
-        <li><b>🆘 상황 찾기</b> — "push 가 거절돼요", "충돌" 처럼 지금 겪는 문제로 비슷한 시나리오를 검색할 수 있어요.</li>
-        <li><b>🧪 자유 연습장</b> — 원격과 팀원이 있는 샘플 저장소에서 마음껏 실험해 보세요.</li>
+        <li><b>목표 달성</b> — 체크리스트가 모두 ✓ 되면 해결! 막히면 힌트 → 개념 노트 → 정답 순서로 보세요. 해결한 뒤 Enter·Tab 을 누르면 다음 시나리오로 넘어가요.</li>
+        <li><b>상황 찾기</b> — "push 가 거절돼요", "충돌" 처럼 지금 겪는 문제로 비슷한 시나리오를 검색할 수 있어요.</li>
+        <li><b>자유 연습장</b> — 원격과 팀원이 있는 샘플 저장소에서 마음껏 실험해 보세요.</li>
       </ol>
       <p class="note">Tab 키: 자동완성 · ↑↓: 이전 명령 · Ctrl+L: 화면 지우기 · 완료 기록은 이 브라우저에만 저장돼요.</p>`, [{ label: '시작하기', primary: true, onClick: () => closeModal(false) }]);
     store.seen = true; save();

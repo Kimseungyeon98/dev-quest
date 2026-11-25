@@ -256,7 +256,10 @@ public class AlgoHost {
     async read(path) { return (await window.cjFileBlob(path)).text(); },
   };
 
+  /* 상태 문장 앞의 이모지는 빼고 색(점)으로 상태를 보여 줘요 */
+  const plainStatus = (t) => String(t).replace(/^[\p{Extended_Pictographic}\uFE0F\u2600-\u27BF]+\s*/u, '');
   function setJavaStatus(text, cls) {
+    text = plainStatus(text);
     const el = $('javaStatus');
     el.textContent = text;
     el.className = 'java-status' + (cls ? ' ' + cls : '');
@@ -282,6 +285,7 @@ public class AlgoHost {
    * 실행·채점
    * ========================================================== */
   function showProgress(text, sub) {
+    text = plainStatus(text);
     const box = $('resultBody');
     box.className = 'result-progress';
     box.innerHTML = esc(text) + (sub ? `<small>${esc(sub)}</small>` : '');
@@ -382,14 +386,15 @@ public class AlgoHost {
   }
 
   function renderResult(p, mode, r, elapsed, first) {
+    let solvedNow = false;
     const box = $('resultBody');
     box.className = '';
     if (r.compileError) {
-      box.innerHTML = `<p class="result-title">❌ 컴파일 오류</p><pre class="compile-error">${esc(r.compileError)}</pre>`;
+      box.innerHTML = `<p class="result-title">${DQ.icon('xCircle')} 컴파일 오류</p><pre class="compile-error">${esc(r.compileError)}</pre>`;
       return;
     }
     if (r.crash) {
-      box.innerHTML = `<p class="result-title">❌ 실행하지 못했어요</p><pre class="compile-error">${esc(r.crash)}</pre>`;
+      box.innerHTML = `<p class="result-title">${DQ.icon('xCircle')} 실행하지 못했어요</p><pre class="compile-error">${esc(r.crash)}</pre>`;
       return;
     }
     const g = r.graded;
@@ -404,11 +409,12 @@ public class AlgoHost {
     const secs = `걸린 시간 ${(elapsed / 1000).toFixed(1)}초 (컴파일 ${(r.compileMs / 1000).toFixed(1)}초 · 채점 ${(r.runMs / 1000).toFixed(1)}초)`;
     if (mode === 'run') {
       html += passed === total
-        ? `<div class="verdict ok">입출력 예를 모두 통과했어요 👍<small>이제 "제출 후 채점하기"로 숨겨진 테스트까지 확인해 보세요. · ${secs}</small></div>`
+        ? `<div class="verdict ok">${DQ.icon('checkCircle')} 입출력 예를 모두 통과했어요<small>이제 "제출 후 채점하기"로 숨겨진 테스트까지 확인해 보세요. · ${secs}</small></div>`
         : `<div class="verdict ng">입출력 예 ${passed}/${total} 통과<small>틀린 예제를 펼쳐서 기댓값과 실행 결과를 비교해 보세요. · ${secs}</small></div>`;
     } else if (passed === total) {
       const xp = DQ.diffMeta(p.difficulty).xp;
-      html += `<div class="verdict ok">🎉 정답이에요! 모든 테스트를 통과했어요.<small>${first ? `+${xp} XP 획득 · ` : ''}${secs}</small></div>`;
+      html += `<div class="verdict ok">${DQ.icon('checkCircle')} 정답이에요! 모든 테스트를 통과했어요.<small>${first ? `+${xp} XP 획득 · ` : ''}${secs}</small></div>`;
+      solvedNow = true;
     } else {
       const part = (kind) => { const l = g.filter((x) => x.kind === kind); return l.length ? `${GROUP_TITLE[kind]} ${l.filter((x) => x.pass).length}/${l.length}` : ''; };
       const hint = g.some((x) => x.kind === 'big' && x.status === 'timeout') ? '효율성 테스트에서 시간 초과가 났어요. 더 빠른 알고리즘이 필요해요 — 힌트를 참고해 보세요.' : '틀린 테스트를 펼쳐서 입력값을 확인해 보세요.';
@@ -417,6 +423,12 @@ public class AlgoHost {
     const stderr = (r.stderr || '').trim();
     if (stderr) html += `<div class="group-title">표준 에러 (System.err)</div><pre class="stderr">${esc(stderr.slice(0, 4000))}</pre>`;
     box.innerHTML = html;
+    // 정답 직후: 다음 문제 버튼 + Enter·Tab 으로 넘어가기 (다른 키를 누르면 원래대로 — 계속 코드를 고칠 수 있어요)
+    if (solvedNow) {
+      const idx = PROBLEMS.findIndex((x) => x.id === p.id);
+      const next = PROBLEMS[idx + 1];
+      if (next) box.querySelector('.verdict.ok').appendChild(DQ.nextButton('다음 문제: ' + next.title, () => loadProblem(next.id)));
+    }
   }
 
   let toastTimer = null;
@@ -458,7 +470,7 @@ public class AlgoHost {
   function loadProblemMeta(p) {
     const cat = CAT_BY_ID[p.category];
     const d = DQ.diffMeta(p.difficulty);
-    $('problemMeta').innerHTML = `<span class="chip">${esc(cat.icon)} ${esc(cat.label)}</span>`
+    $('problemMeta').innerHTML = `<span class="chip">${esc(cat.label)}</span>`
       + `<span class="chip ${d.cls}">${d.stars} ${d.label} · ${d.xp} XP</span>`
       + `<span class="chip">⏱ 케이스당 ${((p.limitMs || AJ.DEFAULT_LIMIT_MS) / 1000).toFixed(0)}초</span>`
       + (state.solved.has(p.id) ? '<span class="chip solved">✓ 해결함</span>' : '');
@@ -467,6 +479,7 @@ public class AlgoHost {
   function loadProblem(id) {
     const p = BY_ID[id];
     if (!p) return;
+    DQ.disarmNext();
     state.currentId = id;
     state.hintIndex = 0;
     $('problemTitle').textContent = p.title;
@@ -475,7 +488,7 @@ public class AlgoHost {
     $('problemConstraints').innerHTML = p.constraints.map((c) => `<li>${inline(c)}</li>`).join('');
     $('problemExamples').innerHTML = examplesHtml(p);
     ['hintBox', 'conceptBox', 'answerBox'].forEach((b) => { $(b).classList.add('hidden'); $(b).innerHTML = ''; });
-    $('hintBtn').textContent = `💡 힌트 (0/${p.hints.length})`;
+    $('hintBtn').innerHTML = `${DQ.icon('bulb')} 힌트 (0/${p.hints.length})`;
     $('problemPane').scrollTop = 0;
     editor.set(state.codes[id] || AJ.starterCode(p));
     const box = $('resultBody');
@@ -494,7 +507,7 @@ public class AlgoHost {
     const box = $('hintBox');
     box.innerHTML = '<ol>' + p.hints.slice(0, state.hintIndex).map((h) => `<li>${inline(h)}</li>`).join('') + '</ol>';
     box.classList.remove('hidden');
-    $('hintBtn').textContent = `💡 힌트 (${state.hintIndex}/${p.hints.length})`;
+    $('hintBtn').innerHTML = `${DQ.icon('bulb')} 힌트 (${state.hintIndex}/${p.hints.length})`;
   });
   $('conceptBtn').addEventListener('click', () => {
     const p = BY_ID[state.currentId];
