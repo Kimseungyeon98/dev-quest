@@ -125,6 +125,16 @@ node shared/tools/build-quest-catalog.js
 - 상단 바의 ☁️ 는 저장 완료, ⏳ 는 저장 중, ⚠️ 는 저장 실패예요.
 - 백엔드 없이(파일·`serve.js`) 열면 예전처럼 이 브라우저에만 저장해요.
 
+### 보안 헤더 (CSP)
+
+모든 응답에 보안 헤더를 붙여요 ([`SecurityHeaders`](backend/src/main/java/com/devquest/web/SecurityHeaders.java)).
+
+- **Content-Security-Policy**: 이 사이트와 허용한 CDN 의 스크립트만 실행돼요. HTML 안에 직접 쓴 스크립트(인라인)도 막혀서, 누군가 닉네임 같은 글자에 스크립트를 끼워 넣어도 실행되지 않아요.
+  - 그래서 **HTML 에 `<script>…</script>` 나 `onclick="…"` 를 쓰면 안 돼요.** 스크립트는 파일로 두고 `<script src>` 로 불러요 (허브는 `hub.js`, 과목 시작은 `shared/start.js` 의 `data-app`). 백엔드 테스트가 HTML 을 검사해요.
+  - Algorithm Quest(`/algo/`)만 CheerpJ(브라우저 Java)와 CodeMirror CDN 때문에 정책을 넓혀요.
+  - 새 외부 주소(CDN·폰트 등)를 쓰려면 `SecurityHeaders` 에 추가해야 해요. e2e 테스트(`security.spec.js`)가 모든 화면에서 정책 위반이 없는지 확인해요.
+- Referrer-Policy · Permissions-Policy · Cross-Origin-Opener-Policy, 그리고 Spring Security 기본 헤더(nosniff · X-Frame-Options · HTTPS 의 HSTS).
+
 ## Railway 배포
 
 저장소 루트의 [`Dockerfile`](Dockerfile) 과 [`railway.json`](railway.json) 으로 배포해요. 이미지 하나에 백엔드와 학습 사이트가 같이 들어가고, 서버를 켤 때 Flyway 가 DB 테이블을 만들어요. CI 의 `docker` job 이 같은 이미지를 빌드해 Railway 처럼 띄워 보고 헬스체크까지 확인해요.

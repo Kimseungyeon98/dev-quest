@@ -80,6 +80,38 @@ class StaticPagesTest {
     }
 
     @Test
+    void 보안_헤더() throws Exception {
+        var hub = web.get("/");
+        String csp = hub.headers().firstValue("Content-Security-Policy").orElse("");
+        assertThat(csp).contains("script-src 'self' 'wasm-unsafe-eval';").contains("frame-ancestors 'none'").contains("object-src 'none'");
+        assertThat(csp).doesNotContain("'unsafe-eval'").doesNotContain("script-src 'self' 'unsafe-inline'");
+        assertThat(hub.headers().firstValue("X-Content-Type-Options")).hasValue("nosniff");
+        assertThat(hub.headers().firstValue("Referrer-Policy")).hasValue("strict-origin-when-cross-origin");
+        assertThat(hub.headers().firstValue("Permissions-Policy").orElse("")).contains("camera=()");
+        // 로그인 화면과 API 응답에도
+        assertThat(new WebClient(port).get("/login/").headers().firstValue("Content-Security-Policy")).isPresent();
+        assertThat(web.get("/api/me").headers().firstValue("Content-Security-Policy")).isPresent();
+        // Algorithm Quest 만 CheerpJ 때문에 넓혀요
+        String algo = web.get("/algo/").headers().firstValue("Content-Security-Policy").orElse("");
+        assertThat(algo).contains("'unsafe-eval'").contains("https://cjrtnc.leaningtech.com").contains("https://cdnjs.cloudflare.com");
+    }
+
+    @Test
+    void 사이트_HTML_에는_인라인_스크립트가_없음() throws Exception {
+        // CSP 가 인라인 스크립트를 막아서, 있으면 그 페이지가 동작하지 않아요
+        var resolver = new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
+        var pages = resolver.getResources("classpath:static/**/*.html");
+        assertThat(pages).hasSizeGreaterThanOrEqualTo(6);
+        var inline = java.util.regex.Pattern.compile("<script(?![^>]*\\bsrc=)[^>]*>", java.util.regex.Pattern.CASE_INSENSITIVE);
+        var handler = java.util.regex.Pattern.compile("\\son[a-z]+\\s*=\\s*[\"']", java.util.regex.Pattern.CASE_INSENSITIVE);
+        for (var page : pages) {
+            String html = page.getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+            assertThat(inline.matcher(html).find()).as(page.getURL() + " 인라인 <script>").isFalse();
+            assertThat(handler.matcher(html).find()).as(page.getURL() + " onclick= 같은 인라인 이벤트").isFalse();
+        }
+    }
+
+    @Test
     void 헬스체크는_로그인_없이() throws Exception {
         var res = new WebClient(port).get("/actuator/health");
         assertThat(res.statusCode()).isEqualTo(200);

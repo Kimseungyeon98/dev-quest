@@ -55,6 +55,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated())
             .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/admin/**")) // 관리자 API 는 쿠키 대신 헤더 토큰
             .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
+            .headers(headers -> headers.addHeaderWriter(new com.devquest.web.SecurityHeaders())) // CSP 등 (web/SecurityHeaders)
             .rememberMe(rm -> rm.rememberMeServices(rememberMe).key(rememberMe.getKey()))
             .logout(logout -> logout
                 .logoutUrl("/api/auth/logout")

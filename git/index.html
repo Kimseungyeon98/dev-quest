@@ -107,8 +107,8 @@
 <script src="js/engine/git-main.js"></script>
 <script src="js/lab.js"></script>
 <script src="js/scenario-files.js"></script>
-<script>window.GIT_PLAYBOOK_SCENARIO_FILES.forEach(function (f) { document.write('<script src="js/' + f + '"><' + '/script>'); });</script>
+<script src="js/load-scenarios.js"></script>
 <script src="js/ui-render.js"></script>
-<script>DevQuest.afterSync('js/app.js'); // 계정 진행도를 받은 뒤에 시작해요</script>
+<script src="../shared/start.js" data-app="js/app.js"></script><!-- 계정 진행도를 받은 뒤에 시작해요 -->
 </body>
 </html>
