@@ -194,7 +194,7 @@
   $('#storyBox').addEventListener('click', (e) => {
     const t = e.target.closest('button') || e.target; // 버튼 안 아이콘을 눌러도 버튼으로
     if (t.id === 'btnHint') {
-      if (hintShown < sc.hints.length) { hintShown++; usedHints(); renderStory(); }
+      if (hintShown < sc.hints.length) { hintShown++; usedHints(); if (sc.id !== 'sandbox') DQ.review.hint('git', sc.id); renderStory(); }
     } else if (t.id === 'btnSol') {
       const cmds = sc.solution.cmds.map((c) => (Array.isArray(c) ? (c[0] === 'write' ? `# 파일 ${c[1]} 을(를) 편집기로 수정:\n${c[2].replace(/\n$/, '')}` : '# (설정 작업)') : (typeof c === 'string' ? c : c.cmd))).join('\n');
       $('#solBox').innerHTML = `<details class="fold sol" open><summary>${DQ.icon('key')} 정답 예시</summary><div><pre>${UI.esc(cmds)}</pre><div>${UI.md(sc.solution.explain || '')}</div></div></details>`;
@@ -203,7 +203,7 @@
     else if (t.dataset && t.dataset.next) loadScenario(t.dataset.next);
   });
   function usedHints() { if (!sc || sc.id === 'sandbox') return; store.hints = store.hints || {}; store.hints[sc.id] = Math.max(store.hints[sc.id] || 0, hintShown); save(); }
-  function markAssisted() { if (!sc || sc.id === 'sandbox') return; store.assisted = store.assisted || {}; store.assisted[sc.id] = true; save(); }
+  function markAssisted() { if (!sc || sc.id === 'sandbox') return; store.assisted = store.assisted || {}; store.assisted[sc.id] = true; save(); DQ.review.answer('git', sc.id); }
 
   function updateGoals() {
     if (!sc || !sc.goals.length) return;
@@ -215,6 +215,7 @@
     if (all && !solved) {
       solved = true;
       if (!store.done[sc.id]) { store.done[sc.id] = { t: Date.now() }; save(); }
+      if (sc.id !== 'sandbox') DQ.review.correct('git', sc.id);
       $('#successBox').innerHTML = successHtml();
       // 정답 직후 Enter·Tab 으로 다음 시나리오 (다른 키를 누르면 원래대로)
       const nextBtn = $('#successBox [data-next]');

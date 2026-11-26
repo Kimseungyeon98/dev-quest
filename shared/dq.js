@@ -770,8 +770,47 @@
       + (cat.desc ? `<div class="dq-cat-desc">${esc(cat.desc)}</div>` : '') + bodyHtml + '</details>';
   }
 
+  /* ---------- 오답 노트 ----------
+   * 과목 화면이 퀘스트마다 일어난 일을 알려 주면 서버(/api/review)가 모아 둬요. 허브의 "오답 노트"에 보여요.
+   *   DevQuest.review.wrong(과목, 퀘스트)   틀린 시도
+   *   DevQuest.review.hint(과목, 퀘스트)    힌트를 봤어요
+   *   DevQuest.review.answer(과목, 퀘스트)  정답(모범 답안)을 봤어요
+   *   DevQuest.review.correct(과목, 퀘스트) 맞혔어요 — 오답 노트에서 연 퀘스트(주소 ?review=1#퀘스트)면 노트에서 졸업해요
+   * 서버에 로그인하지 않은 상태(파일로 연 화면 등)에서는 아무것도 하지 않아요. */
+  const review = (() => {
+    let target = null;
+    if (typeof location !== 'undefined') {
+      try {
+        if (new URLSearchParams(location.search).get('review') === '1') target = decodeURIComponent(location.hash.slice(1)) || null;
+      } catch (e) { target = null; }
+    }
+    function send(course, quest, type) {
+      if (!course || !quest || typeof location === 'undefined' || location.protocol === 'file:') return;
+      sync.ready().then((m) => {
+        if (m !== 'server') return;
+        const fromNotes = type === 'correct' && target === quest;
+        return api('/api/review/events', { method: 'POST', body: { course, quest, type, review: fromNotes } }).then((r) => {
+          if (r.ok && r.data && r.data.cleared) {
+            target = null;
+            notice('다시 맞혔어요! 오답 노트에서 졸업했어요.', { label: '오답 노트 보기', run: () => { location.href = '/#review'; } });
+          }
+        });
+      }).catch(() => {});
+    }
+    return {
+      wrong: (c, q) => send(c, q, 'wrong'),
+      hint: (c, q) => send(c, q, 'hint'),
+      answer: (c, q) => send(c, q, 'answer'),
+      correct: (c, q) => send(c, q, 'correct'),
+      /** 오답 노트에서 연 퀘스트 id (없으면 null) */
+      target: () => target,
+      list: () => api('/api/review'),
+      dismiss: (c, q) => api('/api/review/' + encodeURIComponent(c) + '/' + encodeURIComponent(q), { method: 'DELETE' }),
+    };
+  })();
+
   window.DevQuest = { DIFFICULTY, DIFF_KEYS, diffKey, diffMeta, levelInfo, needFor, TIERS, tierFor, stats, mountBar, esc, itemHtml, catHtml, api, mountAccount, logout, sync, afterSync, merge, notice, getMe, openNicknameDialog, openAccountDialog, showRecoveryCode, openModal,
-    icon, decorateIcons, armNext, disarmNext, nextButton };
+    icon, decorateIcons, armNext, disarmNext, nextButton, review };
   // 정적 HTML 의 <span data-icon="…"> 채우기 (스크립트는 body 끝에서 불러서 요소가 이미 있어요)
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => decorateIcons()); else decorateIcons();

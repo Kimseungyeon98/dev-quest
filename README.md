@@ -105,6 +105,20 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 - 허브의 **내 상태**에 연속 학습일(오늘 아직이면 어제까지 이어진 날 수, 최고 기록), 이번 주 월~일 7칸, 이번 주 XP 가 보여요. 하루·한 주는 `devquest.timezone`(기본 `Asia/Seoul`) 기준이고, 한 주는 월요일부터예요.
 - API: `GET /api/me/activity` → `{ streak, bestStreak, activeToday, totalDays, today, week: { start, xp, done, days: [{ date, done, xp }] } }`
 
+### 오답 노트
+
+틀렸거나 힌트·정답을 본 퀘스트가 허브의 **오답 노트**에 모여요. [다시 풀기]로 열어(`과목/index.html?review=1#퀘스트`) 다시 맞히면 노트에서 **졸업**하고, 다시 틀리거나 힌트를 보면 노트로 돌아와요. × 로 직접 뺄 수도 있어요.
+
+| 과목 | 틀린 시도로 세는 것 | 힌트 | 정답 보기 |
+|---|---|---|---|
+| Linux | 오류가 난 명령 (미션을 열 때마다 한 번) | 힌트 | — |
+| SQL | 결과가 틀린 쿼리 · SQL 오류 · 틀린 단답 (인덱스 만들기처럼 결과가 없는 실행은 빼요) | 힌트 | — |
+| Git | — | 힌트 | 정답 예시 · 자동 풀이 |
+| Algorithm | "제출 후 채점하기"의 오답 · 컴파일 오류 (예제 실행은 연습이라 빼요) | 힌트 | 모범 답안 |
+
+- 과목 화면은 `DevQuest.review.wrong / hint / answer / correct(과목, 퀘스트)` 로 알려 주고, 서버(`quest_reviews` 표)가 모아요.
+- API: `POST /api/review/events` `{ course, quest, type, review }` · `GET /api/review` · `DELETE /api/review/{과목}/{퀘스트}`
+
 ### 퀘스트 카탈로그 (`shared/quests.json`)
 
 과목별 퀘스트 id·난이도·제목(순서대로)과 XP 규칙을 담은 자동 생성 파일(약 20KB)이에요. 서버는 이 파일로 XP 를 계산하고, **허브는 과목 데이터 파일(모두 합쳐 약 380KB) 대신 이 파일 하나만 받아서** 퀘스트 목록·이어하기·진행률을 그려요. `courses.js` 의 `scripts` → `items` 로 만들고, XP 규칙은 `shared/dq.js` 에서 가져와요. **퀘스트를 추가·수정·삭제하면 다시 만들어 커밋해 주세요.** CI 가 최신인지 확인해요.

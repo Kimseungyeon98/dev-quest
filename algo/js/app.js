@@ -389,12 +389,15 @@ public class AlgoHost {
     let solvedNow = false;
     const box = $('resultBody');
     box.className = '';
+    const graded = mode !== 'run'; // 오답 노트: "제출 후 채점하기"만 세요 (예제 실행은 연습)
     if (r.compileError) {
       box.innerHTML = `<p class="result-title">${DQ.icon('xCircle')} 컴파일 오류</p><pre class="compile-error">${esc(r.compileError)}</pre>`;
+      if (graded) DQ.review.wrong('algo', p.id);
       return;
     }
     if (r.crash) {
       box.innerHTML = `<p class="result-title">${DQ.icon('xCircle')} 실행하지 못했어요</p><pre class="compile-error">${esc(r.crash)}</pre>`;
+      if (graded) DQ.review.wrong('algo', p.id);
       return;
     }
     const g = r.graded;
@@ -423,6 +426,7 @@ public class AlgoHost {
     const stderr = (r.stderr || '').trim();
     if (stderr) html += `<div class="group-title">표준 에러 (System.err)</div><pre class="stderr">${esc(stderr.slice(0, 4000))}</pre>`;
     box.innerHTML = html;
+    if (graded) DQ.review[solvedNow ? 'correct' : 'wrong']('algo', p.id);
     // 정답 직후: 다음 문제 버튼 + Enter·Tab 으로 넘어가기 (다른 키를 누르면 원래대로 — 계속 코드를 고칠 수 있어요)
     if (solvedNow) {
       const idx = PROBLEMS.findIndex((x) => x.id === p.id);
@@ -503,7 +507,7 @@ public class AlgoHost {
    * ========================================================== */
   $('hintBtn').addEventListener('click', () => {
     const p = BY_ID[state.currentId];
-    if (state.hintIndex < p.hints.length) state.hintIndex++;
+    if (state.hintIndex < p.hints.length) { state.hintIndex++; DQ.review.hint('algo', p.id); }
     const box = $('hintBox');
     box.innerHTML = '<ol>' + p.hints.slice(0, state.hintIndex).map((h) => `<li>${inline(h)}</li>`).join('') + '</ol>';
     box.classList.remove('hidden');
@@ -526,6 +530,7 @@ public class AlgoHost {
     const p = BY_ID[state.currentId];
     const box = $('answerBox');
     if (e.target.id === 'answerShow') {
+      DQ.review.answer('algo', p.id);
       box.innerHTML = `<pre class="code">${esc(p.solution)}</pre><p>${inline(p.explain)}</p><div class="answer-actions"><button type="button" id="answerCopy">에디터에 붙여넣기</button></div>`;
     } else if (e.target.id === 'answerCopy') {
       if (editor.get().trim() !== AJ.starterCode(p).trim() && !window.confirm('지금 작성한 코드를 모범 답안으로 바꿀까요?')) return;

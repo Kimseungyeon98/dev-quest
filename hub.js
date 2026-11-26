@@ -170,6 +170,65 @@
     el.hidden = false;
   }
 
+  /* ---------- 오답 노트 (백엔드로 열었을 때만) ----------
+   * 틀렸거나 힌트·정답을 본 퀘스트. [다시 풀기]로 열어(?review=1) 다시 맞히면 노트에서 졸업해요. */
+  const REVIEW_SHOW = 5;
+  let reviewAll = false;
+  const courseById = Object.fromEntries(courses.map((c) => [c.id, c]));
+  function ago(iso) {
+    const days = Math.floor((Date.now() - Date.parse(iso)) / 86400000);
+    return days <= 0 ? '오늘' : days === 1 ? '어제' : days < 7 ? `${days}일 전` : days < 30 ? `${Math.floor(days / 7)}주 전` : `${Math.floor(days / 30)}달 전`;
+  }
+  function reviewItemHtml(it) {
+    const c = courseById[it.course];
+    const q = listOf(c).find((x) => x.id === it.quest);
+    const title = q ? q.title : it.quest;
+    const chips = [];
+    if (it.wrong) chips.push(`<span class="rv-chip bad">틀림 ${it.wrong}</span>`);
+    if (it.hints) chips.push(`<span class="rv-chip warn">힌트 ${it.hints}</span>`);
+    if (it.answers) chips.push('<span class="rv-chip warn">정답 봄</span>');
+    chips.push(it.solved ? '<span class="rv-chip ok">맞혔어요 · 한 번 더!</span>' : '<span class="rv-chip">아직 못 풀었어요</span>');
+    const href = `${c.path}index.html?review=1#${encodeURIComponent(it.quest)}`;
+    return `<li style="--fill:${esc(c.accent || '')}">
+        <span class="rv-ico" title="${esc(c.name)}">${iconSvg(c, 18)}</span>
+        <div class="rv-main"><span class="rv-title">${esc(title)}</span>
+          <span class="rv-meta"><span>${esc(c.short || c.name)}</span>${chips.join('')}<span>${ago(it.lastAt)}</span></span></div>
+        <a class="btn btn-ghost rv-go" href="${esc(href)}">다시 풀기</a>
+        <button type="button" class="rv-x" data-dismiss="${esc(it.course)}|${esc(it.quest)}" aria-label="${esc(title)} 오답 노트에서 빼기" title="노트에서 빼기">${DQ.icon('close', 16)}</button>
+      </li>`;
+  }
+  async function renderReview() {
+    const el = document.getElementById('review');
+    const [r] = await Promise.all([DQ.review.list(), catalogReady]);
+    if (!r.ok || !r.data) return;
+    const items = r.data.items.filter((it) => courseById[it.course]);
+    const head = `<div class="sec-head"><h2 id="reviewTitle">오답 노트${items.length ? ` <small>· ${r.data.open}개</small>` : ''}</h2>`
+      + (r.data.cleared ? `<span>지금까지 ${r.data.cleared}개 졸업</span>` : '') + '</div>';
+    let body;
+    if (!items.length) {
+      body = r.data.cleared
+        ? '<p class="review-empty">오답 노트를 모두 졸업했어요. 멋져요!</p>'
+        : '<p class="review-empty">아직 비어 있어요. 틀렸거나 힌트·정답을 본 퀘스트가 여기 모여요. 나중에 다시 풀어서 확실히 내 것으로 만들어요.</p>';
+    } else {
+      const shown = reviewAll ? items : items.slice(0, REVIEW_SHOW);
+      body = '<p class="review-sub">틀렸거나 힌트·정답을 본 퀘스트예요. [다시 풀기]로 열어 다시 맞히면 노트에서 졸업해요.</p>'
+        + `<ol class="review-list">${shown.map(reviewItemHtml).join('')}</ol>`
+        + (items.length > REVIEW_SHOW ? `<button type="button" class="linkbtn" id="reviewMore">${reviewAll ? '접기' : `모두 보기 (${items.length}개)`}</button>` : '');
+    }
+    el.innerHTML = head + body;
+    el.hidden = false;
+    if (location.hash === '#review' && !el.dataset.scrolled) { el.dataset.scrolled = '1'; el.scrollIntoView({ block: 'start' }); }
+  }
+  document.getElementById('review').addEventListener('click', async (e) => {
+    if (e.target.closest('#reviewMore')) { reviewAll = !reviewAll; renderReview(); return; }
+    const x = e.target.closest('[data-dismiss]');
+    if (!x) return;
+    const [course, quest] = x.dataset.dismiss.split('|');
+    x.disabled = true;
+    await DQ.review.dismiss(course, quest);
+    renderReview();
+  });
+
   /* ---------- 랭킹 미니 (상위 5명 + 나) ---------- */
   function posHtml(rank) {
     return `<span class="pos${rank <= 3 ? ' pos-' + rank : ''}" aria-label="${rank}위">${rank}</span>`;
@@ -337,6 +396,7 @@
     if (serverMode) {
       renderRankMini();
       renderActivity();
+      renderReview();
       // 닉네임을 바꾸면 랭킹을 새로 받아요
       window.addEventListener('dq:me', () => {
         Object.keys(rankingCache).forEach((k) => delete rankingCache[k]);
@@ -345,7 +405,7 @@
       });
     }
   });
-  loadCatalog().then((catalog) => {
+  const catalogReady = loadCatalog().then((catalog) => {
     if (!catalog || !catalog.courses) return;
     courses.forEach((c) => {
       const q = catalog.courses[c.id];

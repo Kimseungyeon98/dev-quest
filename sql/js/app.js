@@ -501,6 +501,7 @@
     if (error) {
       el.runStatus.innerHTML = window.DevQuest.icon('xCircle') + ' ' + window.DevQuest.esc(error);
       el.runStatus.className = 'status-error';
+      window.DevQuest.review.wrong('sql', problem.id);
       return;
     }
 
@@ -557,10 +558,13 @@
       el.runStatus.innerHTML = window.DevQuest.icon('checkCircle') + ' ' + window.DevQuest.esc('정답입니다!' + (passNote ? ` (${passNote})` : ''));
       el.runStatus.className = 'status-ok';
       markSolved(problem.id);
+      window.DevQuest.review.correct('sql', problem.id);
       offerNext(el.runStatus);
     } else {
       el.runStatus.innerHTML = window.DevQuest.icon('help') + ' ' + window.DevQuest.esc('아직이에요: ' + reasons.join(' / '));
       el.runStatus.className = 'status-warn';
+      // 결과가 없는 실행(인덱스 만들기 같은 준비 단계)은 틀린 시도로 세지 않아요
+      if (result) window.DevQuest.review.wrong('sql', problem.id);
     }
   }
 
@@ -587,10 +591,12 @@
       el.shortAnswerFeedback.innerHTML = window.DevQuest.icon('checkCircle') + ' 정답입니다!';
       el.shortAnswerFeedback.className = 'status-ok';
       markSolved(problem.id);
+      window.DevQuest.review.correct('sql', problem.id);
       offerNext(el.shortAnswerFeedback);
     } else {
       el.shortAnswerFeedback.innerHTML = window.DevQuest.icon('help') + ' 다시 한 번 생각해보세요.';
       el.shortAnswerFeedback.className = 'status-warn';
+      window.DevQuest.review.wrong('sql', problem.id);
     }
   }
 
@@ -640,6 +646,7 @@
     const p = PROBLEMS_BY_ID[state.currentProblemId];
     if (!p.hints || p.hints.length === 0) return;
     el.hintText.innerHTML = window.DevQuest.icon('bulb') + ' ' + window.DevQuest.esc(p.hints[state.hintIndex]);
+    window.DevQuest.review.hint('sql', p.id);
     el.hintText.classList.remove('hidden');
     state.hintIndex = (state.hintIndex + 1) % p.hints.length;
   });

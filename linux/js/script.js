@@ -1142,6 +1142,7 @@
     if (viState) closeViEditor(false, true);
     const mission = MISSIONS[index];
     game.currentIndex = index;
+    game.reviewReported = { wrong: false, correct: false }; // 오답 노트: 미션을 열 때마다 한 번씩만 알려요
     game.ctx = {
       root: buildRoot(cloneTree(mission.fs || {})),
       cwd: HOME_PATH.slice(),
@@ -1169,6 +1170,7 @@
   function completeMission() {
     const mission = MISSIONS[game.currentIndex];
     if (game.completed.has(mission.id)) return;
+    reportCorrect(mission);
     game.completed.add(mission.id);
     saveProgress();
     appendSuccessBanner(mission);
@@ -1224,10 +1226,30 @@
 
   function checkMissionProgress(state) {
     const mission = MISSIONS[game.currentIndex];
-    if (game.completed.has(mission.id)) return;
     let passed = false;
+    if (game.completed.has(mission.id)) {
+      // 이미 끝낸 미션을 다시 푼 경우: 오답 노트에서 열었으면 졸업 (배너도 다시 보여 줘요)
+      if (game.reviewReported && game.reviewReported.correct) return;
+      try { passed = mission.check(state); } catch (e) { passed = false; }
+      if (passed) {
+        const fromNotes = window.DevQuest.review.target() === mission.id;
+        reportCorrect(mission);
+        if (fromNotes) appendSuccessBanner(mission);
+      }
+      return;
+    }
     try { passed = mission.check(state); } catch (e) { passed = false; }
     if (passed) completeMission();
+    else if (state.hadError && game.reviewReported && !game.reviewReported.wrong) {
+      game.reviewReported.wrong = true; // 오류가 난 명령 (미션을 열 때마다 한 번만 셉니다)
+      window.DevQuest.review.wrong('linux', mission.id);
+    }
+  }
+  function reportCorrect(mission) {
+    if (!game.reviewReported) game.reviewReported = {};
+    if (game.reviewReported.correct) return;
+    game.reviewReported.correct = true;
+    window.DevQuest.review.correct('linux', mission.id);
   }
 
   /* ============================================================
@@ -1537,6 +1559,7 @@
   el.hintBtn.addEventListener('click', () => {
     const mission = MISSIONS[game.currentIndex];
     el.hintText.innerHTML = window.DevQuest.icon('bulb') + ' ' + window.DevQuest.esc(mission.hints[game.hintIndex]);
+    window.DevQuest.review.hint('linux', mission.id);
     el.hintText.classList.remove('hidden');
     game.hintIndex = (game.hintIndex + 1) % mission.hints.length;
   });
