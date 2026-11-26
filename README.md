@@ -255,6 +255,15 @@ cd e2e && npm ci && npx playwright install chromium && npx playwright test
 - **티어**는 "전체 XP 중 내가 얻은 비율"로 정해요: 🌱 새싹 → 🥉 브론즈(5%) → 🥈 실버(20%) → 🥇 골드(40%) → 💠 플래티넘(60%) → 💎 다이아(80%) → 👑 마스터(97%)
 - 허브는 모든 과목을 합친 종합 티어와 과목별 티어/난이도별 진행을 보여 줘요.
 
+## 코드 구조 (과목 앱)
+
+| 과목 | 파일 |
+|---|---|
+| Linux | `linux/js/missions.js`(미션 데이터) · `vfs.js`(가상 파일시스템) · `commands.js`(명령어 구현과 `COMMANDS` 표) · `shell.js`(파이프·리다이렉션·`&&` 실행기) · `script.js`(화면·진행도·vi 편집기) |
+| Git | `git/js/engine/` — `repo.js`(저장소 모델) · `git-core.js`(add·commit 등) · `git-log.js` · `git-refs.js`(branch·tag, 참조 도우미) · `git-checkout.js`(checkout·switch·restore·reset·clean) · `git-plumbing.js`(rev-parse·cat-file 등 배관 명령) · `git-merge.js` · `git-bisect.js` · `git-remote.js` · `shell.js` |
+
+엔진 파일은 화면과 상관없는 순수 코드라 Node 에서도 돌아요 (`git/tools/validate-scenarios.js` 가 모든 Git 시나리오의 정답을 엔진으로 실행해 확인해요).
+
 ## 새 과목 추가하기
 
 1. 새 폴더(예: `docker/`)를 만들고 `index.html` 에 공용 상단 바를 넣어 주세요.
