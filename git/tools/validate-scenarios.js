@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..');
-const eng = ['sha1', 'diff', 'repo', 'git-util', 'git-core', 'git-graph', 'git-log', 'git-refs', 'git-checkout', 'git-plumbing', 'git-merge', 'git-bisect', 'git-remote', 'shell', 'git-main'];
+const eng = ['sha1', 'diff', 'repo', 'git-util', 'git-core', 'git-graph', 'git-log', 'git-refs', 'git-checkout', 'git-plumbing', 'git-merge', 'git-pick', 'git-rebase', 'git-stash', 'git-bisect', 'git-remote', 'shell', 'git-main'];
 globalThis.GitEngine = {};
 eng.forEach((f) => require(path.join(root, 'js', 'engine', f + '.js')));
 require(path.join(root, 'js', 'lab.js'));

@@ -260,7 +260,7 @@ cd e2e && npm ci && npx playwright install chromium && npx playwright test
 | 과목 | 파일 |
 |---|---|
 | Linux | `linux/js/missions.js`(미션 데이터) · `vfs.js`(가상 파일시스템) · `commands.js`(명령어 구현과 `COMMANDS` 표) · `shell.js`(파이프·리다이렉션·`&&` 실행기) · `script.js`(화면·진행도·vi 편집기) |
-| Git | `git/js/engine/` — `repo.js`(저장소 모델) · `git-core.js`(add·commit 등) · `git-log.js` · `git-refs.js`(branch·tag, 참조 도우미) · `git-checkout.js`(checkout·switch·restore·reset·clean) · `git-plumbing.js`(rev-parse·cat-file 등 배관 명령) · `git-merge.js` · `git-bisect.js` · `git-remote.js` · `shell.js` |
+| Git | `git/js/engine/` — `repo.js`(저장소 모델) · `git-core.js`(add·commit 등) · `git-log.js` · `git-refs.js`(branch·tag, 참조 도우미) · `git-checkout.js`(checkout·switch·restore·reset·clean) · `git-plumbing.js`(rev-parse·cat-file 등 배관 명령) · `git-merge.js`(merge, 3-way 병합 도우미) · `git-pick.js`(cherry-pick·revert) · `git-rebase.js` · `git-stash.js` · `git-bisect.js` · `git-remote.js` · `shell.js` |
 
 엔진 파일은 화면과 상관없는 순수 코드라 Node 에서도 돌아요 (`git/tools/validate-scenarios.js` 가 모든 Git 시나리오의 정답을 엔진으로 실행해 확인해요).
 
