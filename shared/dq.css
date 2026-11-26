@@ -209,3 +209,9 @@ button [data-icon], summary [data-icon], .dq-label [data-icon] { margin-right: 6
 .dq-danger > summary h3 { margin: 0; color: #ff7b72; }
 .dq-danger form { margin-top: 10px; }
 .dq-btn-danger { background: #f85149; color: #fff; }
+/* 내 계정 — 로그인 연결 (SSO) */
+.dq-modal [hidden] { display: none !important; }
+.dq-sso-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; }
+.dq-sso-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid #2f3a4a; border-radius: 10px; }
+.dq-sso-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dq-sso-name small { color: #8b949e; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

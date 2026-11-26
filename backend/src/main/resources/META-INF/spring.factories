@@ -1,2 +1,3 @@
 org.springframework.boot.EnvironmentPostProcessor=\
-com.devquest.config.DatabaseUrlEnvironmentPostProcessor
+com.devquest.config.DatabaseUrlEnvironmentPostProcessor,\
+com.devquest.config.SsoEnvironmentPostProcessor

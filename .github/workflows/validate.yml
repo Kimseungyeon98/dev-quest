@@ -157,7 +157,8 @@ jobs:
       - name: 서버 실행
         run: |
           PGPORT=5432 PGDATABASE=devquest java -jar backend/build/libs/dev-quest-*.jar \
-            --server.port=8080 --devquest.limits.signups-per-hour=100000 > server.log 2>&1 &
+            --server.port=8080 --devquest.limits.signups-per-hour=100000 \
+            --spring.config.additional-location=file:e2e/fixtures/fake-oauth.yml > server.log 2>&1 &
           for i in $(seq 1 60); do curl -fsS http://localhost:8080/actuator/health && break; sleep 2; done
 
       - name: Playwright 설치

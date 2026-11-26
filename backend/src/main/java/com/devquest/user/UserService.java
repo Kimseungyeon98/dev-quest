@@ -48,6 +48,33 @@ public class UserService {
         }
     }
 
+    /**
+     * SSO 로 처음 로그인한 사람의 계정을 만들어요. 비밀번호는 없고(비밀번호 로그인 불가),
+     * 아이디는 영문 소문자·숫자로 자동으로 정해요 (예: g_k3j9x2ab). 계정 메뉴에서 비밀번호를 만들면 아이디로도 로그인할 수 있어요.
+     */
+    @Transactional
+    public User createSsoUser(String provider) {
+        String prefix = (provider == null || provider.isEmpty() ? "s" : provider.substring(0, 1).toLowerCase()) + "_";
+        for (int i = 0; i < 20; i++) {
+            StringBuilder sb = new StringBuilder(prefix);
+            for (int k = 0; k < 8; k++) sb.append(SSO_ALPHABET.charAt(RANDOM.nextInt(SSO_ALPHABET.length())));
+            String name = sb.toString();
+            if (users.findByUsernameIgnoreCase(name).isPresent()) continue;
+            try {
+                return users.saveAndFlush(new User(name, null, newDefaultNickname()));
+            } catch (DataIntegrityViolationException e) { /* 드물게 겹치면 다시 */ }
+        }
+        throw new IllegalStateException("SSO 계정 아이디를 만들지 못했어요.");
+    }
+
+    private static final String SSO_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+
+    @Transactional(readOnly = true)
+    public User findById(long id) {
+        return users.findById(id).orElseThrow(() -> new IllegalStateException("계정이 없어요: " + id));
+    }
+
     @Transactional(readOnly = true)
     public User find(String username) {
         return users.findByUsernameIgnoreCase(username).orElseThrow(() -> new IllegalStateException("계정이 없어요: " + username));

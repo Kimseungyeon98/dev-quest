@@ -18,7 +18,7 @@ async function isolate(context, baseURL) {
   await context.route('**/*', (route) => {
     const url = route.request().url();
     if (url.includes('leaningtech.com')) return route.fulfill({ path: path.join(__dirname, '..', 'fixtures', 'stub-cheerpj.js'), contentType: 'text/javascript' });
-    if (url.startsWith(baseURL) || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (url.startsWith(baseURL) || url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('http://localhost:9099/')) return route.continue(); // 가짜 SSO
     return route.abort();
   });
 }

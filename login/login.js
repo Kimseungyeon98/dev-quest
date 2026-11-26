@@ -7,6 +7,8 @@
   const USERNAME_RE = /^[A-Za-z0-9_]{4,20}$/;
   const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,64}$/;
   let mode = 'login';
+  let ssoProviders = [];
+  const SSO_MARK = { google: ['G', '#ffffff'], github: ['GH', '#c9d1d9'], kakao: ['K', '#fee500'], naver: ['N', '#03c75a'] };
 
   /* 로그인 뒤 돌아갈 주소. 다른 사이트로 보내지 않도록 같은 사이트의 경로만 받아요 */
   function nextUrl() {
@@ -33,6 +35,7 @@
     $('forgotBtn').hidden = recover;
     $('backBtn').hidden = !recover;
     $('noCodeHint').hidden = !recover;
+    $('sso').hidden = recover || !ssoProviders.length;
     document.title = (signup ? '회원가입' : recover ? '비밀번호 재설정' : '로그인') + ' — Dev Quest';
     showError('');
     $('username').focus();
@@ -113,4 +116,22 @@
     try { history.replaceState(null, '', location.pathname); } catch (e) { /* 무시 */ }
   }
   if (location.hash) modeFromHash(); else $('username').focus();
+
+  // SSO: 서버에 키를 넣은 제공자만 버튼이 보여요 (없으면 이 영역은 숨겨져요)
+  DQ.api('/api/auth/providers').then((r) => {
+    if (!r.ok || !Array.isArray(r.data) || !r.data.length) return;
+    ssoProviders = r.data;
+    const next = encodeURIComponent(nextUrl());
+    $('ssoList').innerHTML = ssoProviders.map((p) => {
+      const [mark, color] = SSO_MARK[p.id] || [p.name.slice(0, 1), '#c9d1d9'];
+      return `<a class="sso-btn" href="/api/auth/sso/${encodeURIComponent(p.id)}?next=${next}" data-provider="${DQ.esc(p.id)}">`
+        + `<span class="sso-mark" style="--mark:${color}" aria-hidden="true">${DQ.esc(mark)}</span>${DQ.esc(p.name)}로 계속하기</a>`;
+    }).join('');
+    $('sso').hidden = mode === 'recover';
+  });
+  const ssoError = new URLSearchParams(location.search).get('sso_error');
+  if (ssoError) {
+    showError(ssoError);
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* 무시 */ }
+  }
 })();

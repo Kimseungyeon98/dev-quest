@@ -225,7 +225,7 @@ public class AuthController {
 
     private static MeResponse me(User user, String newRecoveryCode) {
         return new MeResponse(user.getUsername(), user.getNickname(), UserService.isDefaultNickname(user.getNickname()),
-                user.getRecoveryCodeHash() != null, newRecoveryCode);
+                user.getRecoveryCodeHash() != null, newRecoveryCode, user.getPasswordHash() != null);
     }
 
     /** 세션 ID 를 바꾸고 로그인 정보를 세션에 저장한 뒤, 원하면 자동 로그인 쿠키를 줘요 */

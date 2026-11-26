@@ -18,5 +18,7 @@ module.exports = defineConfig({
     // 서비스 워커(사이트 파일 캐시)는 기본으로 끄고, 필요한 테스트(wake.spec.js)에서만 켜요
     serviceWorkers: 'block',
   },
+  // 가짜 SSO 서비스 (sso.spec.js). 서버는 --spring.config.additional-location=file:e2e/fixtures/fake-oauth.yml 로 띄워야 해요
+  webServer: { command: 'node fixtures/fake-oauth.js', url: 'http://localhost:9099/health', reuseExistingServer: true },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 860 } } }],
 });

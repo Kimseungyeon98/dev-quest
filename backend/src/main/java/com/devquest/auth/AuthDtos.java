@@ -33,18 +33,20 @@ public final class AuthDtos {
      * username 은 로그인 아이디(본인에게만), nickname 은 남에게 보이는 이름. defaultNickname 이면 아직 기본 닉네임이에요.
      * hasRecoveryCode 는 복구 코드를 만들어 뒀는지, recoveryCode 는 방금 새로 만든 코드(이번 응답에서 한 번만, 평소엔 null)예요.
      */
-    public record MeResponse(String username, String nickname, boolean defaultNickname, boolean hasRecoveryCode, String recoveryCode) {
+    public record MeResponse(String username, String nickname, boolean defaultNickname, boolean hasRecoveryCode, String recoveryCode,
+            boolean hasPassword) {
     }
 
     public record PasswordChangeRequest(
-            @NotBlank(message = "지금 비밀번호를 입력해 주세요.") @Size(max = 128) String currentPassword,
+            @Size(max = 128) String currentPassword, // 비밀번호가 없는 SSO 계정은 비워요 (있는 계정은 서비스에서 확인)
             @NotBlank(message = "새 비밀번호를 입력해 주세요.")
             @Size(min = 8, max = 64, message = "비밀번호는 8~64자예요.")
             @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).*$", message = "비밀번호에 영문과 숫자를 모두 넣어 주세요.")
             String newPassword) {
     }
 
-    public record PasswordConfirmRequest(@NotBlank(message = "비밀번호를 입력해 주세요.") @Size(max = 128) String password) {
+    /** 비밀번호가 없는 SSO 계정은 password 를 비워요 (있는 계정이 비우면 "지금 비밀번호가 맞지 않아요") */
+    public record PasswordConfirmRequest(@Size(max = 128) String password) {
     }
 
     public record RecoverRequest(

@@ -44,7 +44,9 @@ public class SecurityConfig {
     public static final Duration REMEMBER_ME_VALIDITY = Duration.ofDays(30);
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, SafeRememberMeServices rememberMe) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, SafeRememberMeServices rememberMe,
+            org.springframework.beans.factory.ObjectProvider<org.springframework.security.oauth2.client.registration.ClientRegistrationRepository> sso,
+            SsoLoginHandler ssoHandler) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
@@ -52,6 +54,8 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/recover").permitAll()
                 .requestMatchers("/api/admin/**").permitAll() // X-Admin-Token 으로 확인 (AdminController)
+                .requestMatchers(HttpMethod.GET, "/api/auth/providers", "/api/auth/sso/**").permitAll() // SSO 시작 (SsoController)
+                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .anyRequest().authenticated())
             .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/admin/**")) // 관리자 API 는 쿠키 대신 헤더 토큰
             .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
@@ -65,6 +69,10 @@ public class SecurityConfig {
             .requestCache(cache -> cache.disable()) // 돌아갈 주소는 로그인 화면의 next 로 넘겨요
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable);
+        // SSO: 키를 넣은 제공자가 있을 때만 켜져요 (SsoEnvironmentPostProcessor). 없으면 지금처럼 아이디·비밀번호만
+        if (sso.getIfAvailable() != null) {
+            http.oauth2Login(o -> o.loginPage("/login/").successHandler(ssoHandler).failureHandler(ssoHandler));
+        }
         return http.build();
     }
 

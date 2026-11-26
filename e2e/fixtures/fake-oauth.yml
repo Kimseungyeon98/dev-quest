@@ -1,0 +1,20 @@
+# 브라우저 테스트용 가짜 SSO 제공자 (e2e/fixtures/fake-oauth.js 가 localhost:9099 에서 떠요).
+# 서버를 띄울 때 --spring.config.additional-location=file:e2e/fixtures/fake-oauth.yml 로 넣어요. 배포에는 쓰지 않아요.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          fake:
+            client-id: dq-e2e
+            client-secret: dq-e2e-secret
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: profile
+        provider:
+          fake:
+            authorization-uri: http://localhost:9099/authorize
+            token-uri: http://localhost:9099/token
+            user-info-uri: http://localhost:9099/userinfo
+            user-name-attribute: id

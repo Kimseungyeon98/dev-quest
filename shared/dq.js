@@ -499,7 +499,7 @@
     document.querySelectorAll('.dq-account .dq-avatar').forEach((el) => { el.textContent = Array.from(data.nickname)[0] || '?'; });
     document.querySelectorAll('.dq-account .dq-user').forEach((el) => {
       el.title = `내 계정 (로그인 아이디: ${data.username})`;
-      el.classList.toggle('needs-rc', !data.hasRecoveryCode);
+      el.classList.toggle('needs-rc', !data.hasRecoveryCode && data.hasPassword !== false);
     });
     window.dispatchEvent(new CustomEvent('dq:me', { detail: data })); // 허브 랭킹 등이 다시 그려요
   }
@@ -512,13 +512,13 @@
     const r = await getMe();
     if (!r.ok || !r.data || !r.data.username) return;
     host.innerHTML = '<span class="dq-sync" aria-live="polite"></span>'
-      + `<button type="button" class="dq-user${r.data.hasRecoveryCode ? '' : ' needs-rc'}" title="내 계정 (로그인 아이디: ${esc(r.data.username)})" aria-haspopup="dialog"><span class="dq-avatar" aria-hidden="true">${esc(Array.from(r.data.nickname)[0] || '?')}</span><span class="dq-uname">${esc(r.data.nickname)}</span></button>`
+      + `<button type="button" class="dq-user${r.data.hasRecoveryCode || r.data.hasPassword === false ? '' : ' needs-rc'}" title="내 계정 (로그인 아이디: ${esc(r.data.username)})" aria-haspopup="dialog"><span class="dq-avatar" aria-hidden="true">${esc(Array.from(r.data.nickname)[0] || '?')}</span><span class="dq-uname">${esc(r.data.nickname)}</span></button>`
       + '<button type="button" class="dq-logout">로그아웃</button>';
     host.querySelector('.dq-user').addEventListener('click', () => openAccountDialog());
     host.querySelector('.dq-logout').addEventListener('click', logout);
     if (sync.mode() === 'server') sync.setStatus('saved');
     // 복구 코드가 없는 계정(복구 기능 전에 가입)에는 브라우저 세션당 한 번 알려 줘요
-    if (!r.data.hasRecoveryCode) {
+    if (!r.data.hasRecoveryCode && r.data.hasPassword !== false) { // 비밀번호가 없는 SSO 계정은 복구 코드가 필요 없어요
       let shown = false;
       try { shown = sessionStorage.getItem('devQuest:rcNudge') === '1'; sessionStorage.setItem('devQuest:rcNudge', '1'); } catch (e) { /* 무시 */ }
       if (!shown) notice('비밀번호를 잊었을 때 쓸 복구 코드가 아직 없어요.', { label: '만들기', run: () => { document.getElementById('dq-notice').classList.remove('show'); openAccountDialog('recovery'); } });
@@ -591,6 +591,7 @@
     const r = await getMe();
     if (!r.ok || !r.data) return;
     const me = r.data;
+    const noPassword = me.hasPassword === false; // SSO 로만 가입한 계정
     const m = openModal(`
       <div class="dq-modal-head"><h2 id="dqAccTitle">내 계정</h2><button type="button" class="dq-x" data-close aria-label="닫기">${icon('close', 18)}</button></div>
       <p class="dq-modal-sub">로그인 아이디 <b>${esc(me.username)}</b> · 아이디는 다른 사람에게 보이지 않아요.</p>
@@ -604,20 +605,29 @@
         <div class="dq-modal-actions"><button type="submit" class="dq-btn">닉네임 저장</button></div>
       </form>
 
+      <section class="dq-sec" data-sec="sso" hidden>
+        <h3>로그인 연결</h3>
+        <p class="dq-modal-hint">연결해 두면 아이디·비밀번호 없이 그 서비스로 로그인할 수 있어요.</p>
+        <ul class="dq-sso-list"></ul>
+        <p class="dq-modal-error" role="alert"></p>
+      </section>
+
       <form class="dq-sec" data-sec="password" novalidate>
-        <h3>비밀번호 바꾸기</h3>
-        <label for="dqPwCur">지금 비밀번호</label>
-        <input id="dqPwCur" type="password" autocomplete="current-password" maxlength="64" />
+        <h3>${noPassword ? '비밀번호 만들기' : '비밀번호 바꾸기'}</h3>
+        ${noPassword ? `<p class="dq-modal-hint">지금은 연결된 서비스로만 로그인해요. 비밀번호를 만들면 아이디 <b>${esc(me.username)}</b> 와 비밀번호로도 로그인할 수 있어요.</p>` : ''}
+        <label for="dqPwCur"${noPassword ? ' hidden' : ''}>지금 비밀번호</label>
+        <input id="dqPwCur" type="password" autocomplete="current-password" maxlength="64"${noPassword ? ' hidden' : ''} />
         <label for="dqPwNew">새 비밀번호</label>
         <input id="dqPwNew" type="password" autocomplete="new-password" maxlength="64" />
         <label for="dqPwNew2">새 비밀번호 확인</label>
         <input id="dqPwNew2" type="password" autocomplete="new-password" maxlength="64" />
         <p class="dq-modal-hint">8~64자, 영문과 숫자를 모두 · 바꾸면 다른 기기의 로그인은 끊겨요</p>
         <p class="dq-modal-error" role="alert"></p>
-        <div class="dq-modal-actions"><button type="submit" class="dq-btn">비밀번호 바꾸기</button></div>
+        <div class="dq-modal-actions"><button type="submit" class="dq-btn">${noPassword ? '비밀번호 만들기' : '비밀번호 바꾸기'}</button></div>
       </form>
 
-      <form class="dq-sec" data-sec="recovery" novalidate>
+      ${noPassword ? `<section class="dq-sec" data-sec="recovery-none"><h3>복구 코드</h3>
+        <p class="dq-modal-hint">비밀번호가 없는 계정이라 필요 없어요. 비밀번호를 만들면 복구 코드도 만들 수 있어요.</p></section>` : `<form class="dq-sec" data-sec="recovery" novalidate>
         <h3>복구 코드</h3>
         <p class="dq-modal-hint dq-rc-state">${me.hasRecoveryCode
           ? '복구 코드가 있어요. 잃어버렸으면 새로 만들어요 (예전 코드는 더 이상 못 써요).'
@@ -626,14 +636,14 @@
         <input id="dqRcPw" type="password" autocomplete="current-password" maxlength="64" />
         <p class="dq-modal-error" role="alert"></p>
         <div class="dq-modal-actions"><button type="submit" class="dq-btn">${me.hasRecoveryCode ? '새로 만들기' : '복구 코드 만들기'}</button></div>
-      </form>
+      </form>`}
 
       <details class="dq-sec dq-danger" data-sec="delete">
         <summary><h3>회원 탈퇴</h3></summary>
         <form novalidate>
           <p class="dq-modal-hint">계정과 모든 과목의 진행도·랭킹 기록이 바로 지워지고 되돌릴 수 없어요. 같은 아이디로 다시 가입할 수는 있어요.</p>
-          <label for="dqDelPw">비밀번호 확인</label>
-          <input id="dqDelPw" type="password" autocomplete="current-password" maxlength="64" />
+          <label for="dqDelPw"${noPassword ? ' hidden' : ''}>비밀번호 확인</label>
+          <input id="dqDelPw" type="password" autocomplete="current-password" maxlength="64"${noPassword ? ' hidden' : ''} />
           <label for="dqDelOk">확인을 위해 <b>탈퇴합니다</b> 라고 입력해 주세요</label>
           <input id="dqDelOk" type="text" autocomplete="off" maxlength="10" />
           <p class="dq-modal-error" role="alert"></p>
@@ -668,18 +678,25 @@
       e.preventDefault();
       const form = e.currentTarget;
       const cur = form.querySelector('#dqPwCur').value, next = form.querySelector('#dqPwNew').value, next2 = form.querySelector('#dqPwNew2').value;
-      if (!cur) return fail(form, { data: { error: '지금 비밀번호를 입력해 주세요.', field: 'currentPassword' } });
+      if (!cur && !noPassword) return fail(form, { data: { error: '지금 비밀번호를 입력해 주세요.', field: 'currentPassword' } });
       if (!PASSWORD_RE.test(next)) return fail(form, { data: { error: '새 비밀번호는 8~64자이고, 영문과 숫자를 모두 넣어 주세요.', field: 'newPassword' } });
       if (next !== next2) { form.querySelector('.dq-modal-error').textContent = '새 비밀번호 확인이 일치하지 않아요.'; form.querySelector('#dqPwNew2').focus(); return; }
       const btn = form.querySelector('button'); btn.disabled = true;
-      const res = await api('/api/me/password', { method: 'PUT', body: { currentPassword: cur, newPassword: next } });
+      const res = await api('/api/me/password', { method: 'PUT', body: noPassword ? { newPassword: next } : { currentPassword: cur, newPassword: next } });
       btn.disabled = false;
       if (!res.ok) return fail(form, res, '바꾸지 못했어요. 잠시 후 다시 시도해 주세요.');
+      if (noPassword) { // 이제 비밀번호가 있어요 → 복구 코드 등을 쓸 수 있게 다시 열어요
+        setMe(res.data);
+        m.close();
+        notice(`비밀번호를 만들었어요. 이제 아이디 ${res.data.username} 로도 로그인할 수 있어요.`);
+        openAccountDialog('recovery');
+        return;
+      }
       form.reset();
       form.querySelector('.dq-modal-error').textContent = '';
       notice('비밀번호를 바꿨어요. 다른 기기의 로그인은 끊겼어요.');
     });
-    sec('recovery').addEventListener('submit', async (e) => {
+    if (sec('recovery')) sec('recovery').addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.currentTarget, password = form.querySelector('#dqRcPw').value;
       if (!password) return fail(form, { data: { error: '비밀번호를 입력해 주세요.', field: 'password' } });
@@ -696,7 +713,7 @@
       e.preventDefault();
       const form = e.currentTarget, err = form.querySelector('.dq-modal-error');
       const password = form.querySelector('#dqDelPw').value;
-      if (!password) { err.textContent = '비밀번호를 입력해 주세요.'; form.querySelector('#dqDelPw').focus(); return; }
+      if (!password && !noPassword) { err.textContent = '비밀번호를 입력해 주세요.'; form.querySelector('#dqDelPw').focus(); return; }
       if (form.querySelector('#dqDelOk').value.trim() !== '탈퇴합니다') { err.textContent = '"탈퇴합니다" 라고 정확히 입력해 주세요.'; form.querySelector('#dqDelOk').focus(); return; }
       const btn = form.querySelector('button'); btn.disabled = true;
       const res = await api('/api/me', { method: 'DELETE', body: { password } });
@@ -706,6 +723,44 @@
       location.href = '/login/?bye=1';
     });
     if (section === 'delete') box.querySelector('[data-sec="delete"]').open = true;
+    renderSso(sec('sso'));
+  }
+
+  /* 내 계정 창의 "로그인 연결": 서버에 키가 있는 제공자만 보여요 (하나도 없으면 영역이 숨겨져요) */
+  async function renderSso(el) {
+    const r = await api('/api/me/identities');
+    if (!r.ok || !r.data) return;
+    const { identities, providers } = r.data;
+    const ids = Object.fromEntries(identities.map((i) => [i.provider, i]));
+    const all = providers.map((p) => p.id).concat(identities.map((i) => i.provider).filter((id) => !providers.some((p) => p.id === id)));
+    if (!all.length) { el.hidden = true; return; }
+    const nameOf = (id) => (providers.find((p) => p.id === id) || { name: id }).name;
+    el.querySelector('.dq-sso-list').innerHTML = all.map((id) => {
+      const i = ids[id];
+      const info = i ? `<small>연결됨${i.email ? ' · ' + esc(i.email) : i.displayName ? ' · ' + esc(i.displayName) : ''}</small>` : '<small>연결 안 됨</small>';
+      const btn = i
+        ? `<button type="button" class="dq-btn dq-btn-ghost" data-unlink="${esc(id)}">연결 끊기</button>`
+        : `<button type="button" class="dq-btn" data-link="${esc(id)}">연결하기</button>`;
+      return `<li><span class="dq-sso-name"><b>${esc(nameOf(id))}</b>${info}</span>${btn}</li>`;
+    }).join('');
+    el.hidden = false;
+    el.onclick = async (e) => {
+      const b = e.target.closest('button[data-link], button[data-unlink]');
+      if (!b) return;
+      const err = el.querySelector('.dq-modal-error');
+      err.textContent = '';
+      b.disabled = true;
+      if (b.dataset.link) {
+        const res = await api(`/api/me/identities/${encodeURIComponent(b.dataset.link)}/link`, { method: 'POST' });
+        if (res.ok && res.data && res.data.url) { location.href = res.data.url; return; } // 그 서비스에서 로그인하고 돌아와요
+        err.textContent = (res.data && res.data.error) || '연결을 시작하지 못했어요.';
+      } else {
+        const res = await api(`/api/me/identities/${encodeURIComponent(b.dataset.unlink)}`, { method: 'DELETE' });
+        if (res.ok) { notice(`${nameOf(b.dataset.unlink)} 연결을 끊었어요.`); renderSso(el); return; }
+        err.textContent = (res.data && res.data.error) || '연결을 끊지 못했어요.';
+      }
+      b.disabled = false;
+    };
   }
   /* 예전 이름 (허브의 "닉네임 정하기" 등에서 불러요) */
   function openNicknameDialog() { return openAccountDialog('nickname'); }

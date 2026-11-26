@@ -229,6 +229,18 @@
     renderReview();
   });
 
+  /* ---------- SSO 로그인·연결에서 돌아왔을 때 (?sso=new|linked · ?sso_error=… · #account) ---------- */
+  function ssoReturn() {
+    const q = new URLSearchParams(location.search);
+    const sso = q.get('sso'), err = q.get('sso_error'), openAccount = location.hash === '#account';
+    if (!sso && !err && !openAccount) return;
+    if (sso === 'new') DQ.notice('가입을 환영해요! 랭킹에 보일 닉네임을 정해 보세요.', { label: '닉네임 정하기', run: () => DQ.openNicknameDialog() });
+    else if (sso === 'linked') DQ.notice('로그인을 연결했어요. 이제 그 서비스로도 로그인할 수 있어요.');
+    else if (err) DQ.notice(err);
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* 무시 */ }
+    if (openAccount) DQ.openAccountDialog();
+  }
+
   /* ---------- 랭킹 미니 (상위 5명 + 나) ---------- */
   function posHtml(rank) {
     return `<span class="pos${rank <= 3 ? ' pos-' + rank : ''}" aria-label="${rank}위">${rank}</span>`;
@@ -397,6 +409,7 @@
       renderRankMini();
       renderActivity();
       renderReview();
+      ssoReturn();
       // 닉네임을 바꾸면 랭킹을 새로 받아요
       window.addEventListener('dq:me', () => {
         Object.keys(rankingCache).forEach((k) => delete rankingCache[k]);

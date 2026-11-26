@@ -46,15 +46,19 @@ public class AccountService {
     /** 계정 메뉴에서 복구 코드를 (다시) 만들 때는 비밀번호를 한 번 더 확인해요 */
     @Transactional
     public String reissueRecoveryCode(String username, String password) {
-        checkPassword(userService.find(username), password);
+        User user = userService.find(username);
+        if (user.getPasswordHash() == null) throw new AccountException("복구 코드는 비밀번호를 잊었을 때 쓰는 거라, 먼저 비밀번호를 만들어 주세요.", "password");
+        checkPassword(user, password);
         return issueRecoveryCode(username);
     }
 
     @Transactional
     public void changePassword(String username, String currentPassword, String newPassword) {
         User user = userService.find(username);
-        checkPassword(user, currentPassword);
-        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) throw new AccountException("지금과 다른 비밀번호를 정해 주세요.", "newPassword");
+        if (user.getPasswordHash() != null) { // SSO 로만 가입해 비밀번호가 없으면 지금 비밀번호 없이 처음 만들어요
+            checkPassword(user, currentPassword);
+            if (passwordEncoder.matches(newPassword, user.getPasswordHash())) throw new AccountException("지금과 다른 비밀번호를 정해 주세요.", "newPassword");
+        }
         user.changePassword(passwordEncoder.encode(newPassword));
         users.save(user);
     }
@@ -100,7 +104,7 @@ public class AccountService {
     @Transactional
     public void deleteAccount(String username, String password) {
         User user = userService.find(username);
-        checkPassword(user, password);
+        if (user.getPasswordHash() != null) checkPassword(user, password); // SSO 로만 가입한 계정은 확인 문구만으로 (화면에서)
         users.delete(user);
         users.flush();
     }

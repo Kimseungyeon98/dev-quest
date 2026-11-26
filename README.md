@@ -45,6 +45,25 @@ cd backend && ./gradlew bootRun                 # http://localhost:8080/
 - API: `POST /api/auth/signup` · `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/me`. POST 는 `XSRF-TOKEN` 쿠키 값을 `X-XSRF-TOKEN` 헤더로 보내야 해요 (프론트는 `DevQuest.api()` 가 알아서 해요).
 - 배포할 때 `REMEMBER_ME_KEY` 환경 변수에 임의의 긴 문자열을 넣어 두면 좋아요.
 
+### SSO (구글 · 깃허브 · 카카오 로그인)
+
+준비가 다 돼 있어서 **키만 넣으면 켜져요.** 키가 없는 제공자는 버튼도 안 보이고, 하나도 없으면 지금처럼 아이디·비밀번호만 써요.
+
+| 제공자 | Railway 변수 | 개발자 콘솔에 등록할 Redirect URI |
+|---|---|---|
+| Google | `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` | `https://내주소/login/oauth2/code/google` |
+| GitHub | `GITHUB_CLIENT_ID` · `GITHUB_CLIENT_SECRET` | `https://내주소/login/oauth2/code/github` |
+| 카카오 | `KAKAO_CLIENT_ID`(REST API 키) · `KAKAO_CLIENT_SECRET`(콘솔에서 켰을 때만) | `https://내주소/login/oauth2/code/kakao` |
+
+- Google: [Google Cloud 콘솔](https://console.cloud.google.com/apis/credentials) → OAuth 클라이언트 ID(웹 애플리케이션). 동의 화면은 이름·이메일만 써요(`openid profile email`).
+- GitHub: Settings → Developer settings → OAuth Apps → New OAuth App (Homepage 는 사이트 주소).
+- 카카오: [카카오 developers](https://developers.kakao.com) → 앱 → 카카오 로그인 켜기 → Redirect URI 등록, 동의 항목에서 닉네임.
+- 처음 SSO 로 로그인하면 계정이 새로 생겨요. 아이디는 자동(`g_xxxxxxxx` 꼴)이고 비밀번호가 없어요. 계정 메뉴에서 **비밀번호 만들기**를 하면 아이디로도 로그인할 수 있어요.
+- 이미 계정이 있으면 **내 계정 → 로그인 연결 → 연결하기**로 붙여요. 이메일이 같다고 자동으로 합치지는 않아요(이메일을 확인하지 않는 서비스도 있어서 계정 탈취 위험).
+- 비밀번호가 없는 계정의 마지막 로그인 연결은 끊을 수 없어요 (로그인할 방법이 없어지니까). 탈퇴는 확인 문구만으로 해요.
+- 테이블: `user_identities(user_id, provider, subject, email, …)`, `(provider, subject)` 가 같으면 같은 사람. API: `GET /api/auth/providers` · `GET /api/auth/sso/{제공자}?next=` · `GET /api/me/identities` · `POST /api/me/identities/{제공자}/link` · `DELETE /api/me/identities/{제공자}`
+- 테스트: 백엔드는 가짜 OAuth2 서비스를 띄워 로그인·연결 전체 흐름을, e2e 는 `e2e/fixtures/fake-oauth.js`(제공자 이름 `fake`)로 화면까지 확인해요. 로컬에서 e2e 를 돌릴 때는 서버에 `--spring.config.additional-location=file:e2e/fixtures/fake-oauth.yml` 을 붙여요.
+
 ### 비밀번호 변경 · 복구
 
 이메일을 받지 않아서, 비밀번호를 잊었을 때는 **복구 코드**로 되찾아요.
@@ -235,7 +254,7 @@ node algo/tools/serve.js
 
 ```bash
 # 1) 서버 띄우기 (테스트가 계정을 많이 만들어서 가입 제한을 풀어요)
-cd backend && ./gradlew bootJar && java -jar build/libs/dev-quest-0.0.1.jar --devquest.limits.signups-per-hour=100000
+cd backend && ./gradlew bootJar && java -jar build/libs/dev-quest-0.0.1.jar --devquest.limits.signups-per-hour=100000 --spring.config.additional-location=file:../e2e/fixtures/fake-oauth.yml
 # 2) 다른 터미널에서
 cd e2e && npm ci && npx playwright install chromium && npx playwright test
 ```
