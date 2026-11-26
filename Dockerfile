@@ -6,10 +6,11 @@ FROM eclipse-temurin:21-jdk AS build
 WORKDIR /src
 
 # 의존성 먼저 받아 두기 (소스만 바뀌면 이 층은 캐시를 써요)
+# Maven 저장소가 잠깐 요청을 거절(429 Too Many Requests 등)할 때가 있어서 최대 3번까지 다시 시도해요
 COPY backend/gradlew backend/settings.gradle.kts backend/build.gradle.kts backend/
 COPY backend/gradle backend/gradle
-RUN sed -i 's/\r$//' backend/gradlew && chmod +x backend/gradlew \
- && cd backend && ./gradlew --no-daemon -q dependencies > /dev/null
+RUN sed -i 's/\r$//' backend/gradlew && chmod +x backend/gradlew && cd backend \
+ && for i in 1 2 3; do ./gradlew --no-daemon -q dependencies > /dev/null && exit 0; echo "의존성 받기 실패 ($i/3), 잠시 뒤 다시 시도"; sleep 20; done; exit 1
 
 COPY . .
 RUN sed -i 's/\r$//' backend/gradlew && chmod +x backend/gradlew \
